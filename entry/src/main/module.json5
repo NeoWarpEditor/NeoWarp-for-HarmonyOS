@@ -1,0 +1,87 @@
+// 零 INTERNET 权限：由系统权限层强制保证「离线版本」。
+// 所有网络能力（更新检查/在线 AI/公网信令）在 ArkWeb 运行时内被禁用，
+// 近场协作走系统分布式能力，不经公网。
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "description": "$string:module_desc",
+    "mainElement": "EntryAbility",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    "abilities": [
+      {
+        "name": "EntryAbility",
+        "srcEntry": "./ets/entryability/EntryAbility.ets",
+        "description": "$string:EntryAbility_desc",
+        "icon": "$media:ic_launcher",
+        "label": "$string:EntryAbility_label",
+        "startWindowIcon": "$media:ic_launcher",
+        "startWindowBackground": "$color:start_window_background",
+        "exported": true,
+        "continuable": true,
+        "orientation": "unspecified",
+        "launchType": "singleton",
+        "removeMissionAfterTerminate": true,
+        "supportWindowMode": ["fullscreen", "split", "floating"],
+        "maxWindowRatio": 2.5,
+        "minWindowRatio": 0.4,
+        "maxWindowWidth": 2560,
+        "minWindowWidth": 320,
+        "maxWindowHeight": 2560,
+        "minWindowHeight": 320,
+        "skills": [
+          {
+            "entities": ["entity.system.home"],
+            "actions": ["action.system.home"]
+          },
+          {
+            "actions": ["ohos.want.action.viewData"],
+            "entities": ["entity.system.default"],
+            "uris": [
+              { "scheme": "file", "type": "application/x.scratch.sb3", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "application/x.scratch.sb2", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "application/x.scratch.sb", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "application/x.scratch.np1", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "application/x.neowarp.npnp", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "application/x.neowarp.viewsb3", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "text/javascript", "linkFeature": "FileOpen" }
+            ]
+          }
+        ]
+      }
+    ],
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.CAMERA",
+        "reason": "$string:perm_camera",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
+        "name": "ohos.permission.MICROPHONE",
+        "reason": "$string:perm_microphone",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
+        "name": "ohos.permission.DISTRIBUTED_DATASYNC",
+        "reason": "$string:perm_distributed",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      }
+    ]
+  }
+}

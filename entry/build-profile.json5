@@ -1,0 +1,40 @@
+{
+  "apiType": "stageMode",
+  "buildOption": {
+    "arkOptions": {
+      "runtimeOnly": {
+        "packages": []
+      }
+    },
+    "nativeLib": {
+      "filter": {
+        "excludes": ["**/x86_64/**", "**/armeabi-v7a/**"],
+        "pickFirsts": [],
+        "enableOverride": false
+      }
+    },
+    "resOptions": {
+      "compression": {
+        "media": { "enable": false }
+      }
+    }
+  },
+  "buildOptionSet": [
+    {
+      "name": "release",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": false,
+            "files": ["./obfuscation-rules.txt"]
+          }
+        }
+      }
+    },
+    { "name": "debug", "arkOptions": {} }
+  ],
+  "targets": [
+    { "name": "default", "runtimeOS": "HarmonyOS" },
+    { "name": "ohosTest" }
+  ]
+}

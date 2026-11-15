@@ -1,0 +1,14 @@
+{
+  "float": [
+    { "name": "breakpoint_sm_max", "value": "320" },
+    { "name": "breakpoint_md_max", "value": "600" },
+    { "name": "breakpoint_lg_max", "value": "840" },
+    { "name": "fold_crease_safety_vp", "value": "24" },
+    { "name": "touch_target_min_vp", "value": "48" },
+    { "name": "side_panel_width_vp", "value": "260" },
+    { "name": "title_bar_height_vp", "value": "44" },
+    { "name": "dpr_cap_pc", "value": "2.5" },
+    { "name": "dpr_cap_tablet", "value": "2.0" },
+    { "name": "dpr_cap_fold", "value": "1.75" }
+  ]
+}

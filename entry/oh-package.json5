@@ -1,0 +1,10 @@
+{
+  "modelVersion": "6.0.0",
+  "name": "entry",
+  "version": "2.3.0",
+  "description": "NeoWarp HarmonyOS entry module",
+  "main": "",
+  "author": "Shiyuan / NeoWarp contributors",
+  "license": "GPL-3.0",
+  "dependencies": {}
+}

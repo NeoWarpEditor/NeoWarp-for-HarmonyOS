@@ -1,0 +1,16 @@
+# ---------- HarmonyOS / hvigor 构建产物 ----------
+entry/build/
+.hvigor/
+oh_modules/
+node_modules/
+*.log
+
+# ---------- 本地签名材料（由 scripts/sign_hap.mjs 重新生成）----------
+signing/
+
+# ---------- 编辑器 / 系统 ----------
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.tmp

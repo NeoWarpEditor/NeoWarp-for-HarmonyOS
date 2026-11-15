@@ -1,0 +1,32 @@
+{
+  "string": [
+    { "name": "EntryAbility_label", "value": "NeoWarp" },
+    { "name": "module_desc", "value": "NeoWarp offline editor module" },
+    { "name": "EntryAbility_desc", "value": "NeoWarp Scratch 3 offline editor" },
+    { "name": "menu_file", "value": "File" },
+    { "name": "menu_edit", "value": "Edit" },
+    { "name": "menu_view", "value": "View" },
+    { "name": "action_new", "value": "New project" },
+    { "name": "action_open", "value": "Open project" },
+    { "name": "action_save", "value": "Save project" },
+    { "name": "action_packager", "value": "Package HTML / ZIP" },
+    { "name": "action_settings", "value": "Settings" },
+    { "name": "action_addons", "value": "Addons" },
+    { "name": "action_task_manager", "value": "Task manager" },
+    { "name": "action_offline_badge", "value": "Offline" },
+    { "name": "profile_pc", "value": "PC" },
+    { "name": "profile_tablet", "value": "Tablet" },
+    { "name": "profile_wide_fold", "value": "Wide fold" },
+    { "name": "profile_triple_fold", "value": "Triple fold" },
+    { "name": "stats_cpu", "value": "CPU" },
+    { "name": "stats_memory", "value": "Memory" },
+    { "name": "stats_targets", "value": "Sprites" },
+    { "name": "perm_camera", "value": "Required by video sensing and camera costume blocks" },
+    { "name": "perm_microphone", "value": "Required by loudness and sound recording blocks" },
+    { "name": "perm_notification", "value": "Notify on long-running package tasks" },
+    { "name": "perm_distributed", "value": "Nearby collaboration between your HarmonyOS devices (no Internet)" },
+    { "name": "perf_high", "value": "High performance" },
+    { "name": "perf_balanced", "value": "Balanced" },
+    { "name": "perf_saver", "value": "Power saver" }
+  ]
+}

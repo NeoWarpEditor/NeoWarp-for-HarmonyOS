@@ -1,0 +1,32 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "NeoWarp offline editor module" },
+    { "name": "EntryAbility_desc", "value": "NeoWarp Scratch 3 offline editor" },
+    { "name": "EntryAbility_label", "value": "NeoWarp" },
+    { "name": "perm_camera", "value": "用于视频侦测与造型拍照积木" },
+    { "name": "perm_microphone", "value": "用于响度侦测与录音积木" },
+    { "name": "perm_notification", "value": "用于项目打包完成等长任务通知" },
+    { "name": "perm_distributed", "value": "用于同一帐号下鸿蒙设备间的近场协作（不经公网）" },
+    { "name": "menu_file", "value": "文件" },
+    { "name": "menu_edit", "value": "编辑" },
+    { "name": "menu_view", "value": "视图" },
+    { "name": "action_new", "value": "新建项目" },
+    { "name": "action_open", "value": "打开项目" },
+    { "name": "action_save", "value": "保存项目" },
+    { "name": "action_packager", "value": "打包为 HTML / ZIP" },
+    { "name": "action_settings", "value": "设置" },
+    { "name": "action_addons", "value": "插件" },
+    { "name": "action_task_manager", "value": "任务管理器" },
+    { "name": "action_offline_badge", "value": "离线" },
+    { "name": "profile_pc", "value": "PC" },
+    { "name": "profile_tablet", "value": "平板" },
+    { "name": "profile_wide_fold", "value": "阔折叠" },
+    { "name": "profile_triple_fold", "value": "三折叠" },
+    { "name": "stats_cpu", "value": "CPU" },
+    { "name": "stats_memory", "value": "内存" },
+    { "name": "stats_targets", "value": "角色" },
+    { "name": "perf_high", "value": "高性能" },
+    { "name": "perf_balanced", "value": "均衡" },
+    { "name": "perf_saver", "value": "省电" }
+  ]
+}

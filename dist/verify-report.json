@@ -1,0 +1,144 @@
+{
+  "file": "/workspace/NeoWarpHarmony/dist/NeoWarp-2.3.0-harmony.hap",
+  "checkedAt": "2026-11-14T17:56:23.200Z",
+  "mode": "real-harmonyos-toolchain",
+  "toolchain": {
+    "cli": "HarmonyOS Command Line Tools 26.0.0.821",
+    "sdk": "HarmonyOS 26.0.0 (26.0.0.105)",
+    "hvigorw": "6.26.4",
+    "ohpm": "26.0.0.630",
+    "jdk": "OpenJDK 21.0.13 (Corretto)"
+  },
+  "buildChain": [
+    "hvigorw assembleHap --mode module -p product=default -p buildMode=release --no-daemon",
+    "node scripts/sign_hap.mjs (hap-sign-tool sign-profile / sign-app / verify-app)"
+  ],
+  "summary": {
+    "passed": 24,
+    "total": 24,
+    "allPassed": true
+  },
+  "checks": [
+    {
+      "name": "交付 HAP 存在",
+      "ok": true,
+      "detail": "119.52 MB"
+    },
+    {
+      "name": "SHA-256",
+      "ok": true,
+      "detail": "4eb8339dde5dd5da964b54df575f9cd4fb3333bdf7df01eb25ce9c51867ebcf5"
+    },
+    {
+      "name": "ZIP 归档完整性 (unzip -t)",
+      "ok": true,
+      "detail": "No errors detected in compressed data of /workspace/NeoWarpHarmony/dist/NeoWarp-2.3.0-harmony.hap."
+    },
+    {
+      "name": "HAP 条目总数",
+      "ok": true,
+      "detail": "1467 个条目"
+    },
+    {
+      "name": "必需条目 module.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "必需条目 resources.index",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "必需条目 pack.info",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "必需条目 pkgSdkInfo.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "必需条目 ets/modules.abc",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "ArkTS 编译字节码 modules.abc",
+      "ok": true,
+      "detail": "112388 bytes（真实 ArkTS 编译器产出）"
+    },
+    {
+      "name": "离线 rawfile 资源",
+      "ok": true,
+      "detail": "1455 个文件"
+    },
+    {
+      "name": "GUI bundle gui/index.js",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "注入桥接层 harmony-bridge.js",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "离线清单 offline-manifest.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "module.json 可解析",
+      "ok": true,
+      "detail": "abilities=1"
+    },
+    {
+      "name": "零 INTERNET 权限（离线硬保证）",
+      "ok": true,
+      "detail": "ohos.permission.CAMERA, ohos.permission.MICROPHONE, ohos.permission.DISTRIBUTED_DATASYNC"
+    },
+    {
+      "name": "deviceTypes 覆盖 PC/平板/折叠",
+      "ok": true,
+      "detail": "phone, tablet, 2in1"
+    },
+    {
+      "name": "bundle 入口 EntryAbility",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "hap-sign-tool verify-app",
+      "ok": true,
+      "detail": "Digest verify result: true, DigestAlgorithm: SHA-256"
+    },
+    {
+      "name": "签名证书链导出",
+      "ok": true,
+      "detail": "3 张证书"
+    },
+    {
+      "name": "签名 Profile 导出",
+      "ok": true,
+      "detail": "3463 bytes"
+    },
+    {
+      "name": "ArkTS 源码文件",
+      "ok": true,
+      "detail": "12 个 .ets"
+    },
+    {
+      "name": "HarmonyOS CLI 已安装",
+      "ok": true,
+      "detail": "hvigorw 6.26.4 | ohpm 26.0.0.630"
+    },
+    {
+      "name": "SDK 为 API 26 Release",
+      "ok": true,
+      "detail": "HarmonyOS 26.0.0 / 26.0.0.105 / Release"
+    }
+  ],
+  "remainingBoundary": "华为开发者正式证书 + 设备 UDID profile + 真机 A1-A8 验收 + 应用市场上架"
+}

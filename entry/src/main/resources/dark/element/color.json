@@ -1,0 +1,7 @@
+{
+  "color": [
+    { "name": "app_background", "value": "#FF0F1115" },
+    { "name": "surface", "value": "#FF1C1E24" },
+    { "name": "surface_elevated", "value": "#FF262830" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "modelVersion": "6.0.0",
+  "name": "neowarp-harmony",
+  "version": "2.3.0",
+  "description": "NeoWarp for HarmonyOS 7 (API 26) - offline Scratch 3 editor",
+  "main": "",
+  "author": "Shiyuan / NeoWarp contributors",
+  "license": "GPL-3.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@ohos/hvigor": "6.26.4",
+    "@ohos/hvigor-ohos-plugin": "6.26.4"
+  }
+}

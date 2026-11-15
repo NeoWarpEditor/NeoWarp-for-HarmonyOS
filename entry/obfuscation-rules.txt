@@ -1,0 +1,15 @@
+# NeoWarp HarmonyOS 混淆保留规则
+# 当前 obfuscation.ruleOptions.enable = false，本文件仅满足构建链要求。
+# 若后续启用混淆，必须补充以下白名单，否则 ArkWeb 桥接与 ArkUI 生命周期会失效：
+#   - javaScriptProxy 暴露的 invoke / emit / intercept 等方法名
+#   - @Entry / @Component 组件名与 aboutToAppear / build 等生命周期方法
+#   - NW.host 服务命名空间字符串（fs / system / theme / window / perf / device / package）
+#   - rawfile 离线站点通过字符串调用的 window.HarmonyNative 成员
+-keep-property-name
+invoke
+intercept
+emit
+warmup
+notifyDeviceChange
+notifyThemeChange
+pushTaskStats

@@ -1,0 +1,8 @@
+NeoWarp HarmonyOS Port — third party notices
+
+This build bundles NeoWarp (GPL-3.0), derived from TurboWarp Desktop.
+Upstream components include scratch-gui, scratch-blocks, scratch-vm,
+scratch-render, @turbowarp/extensions, monaco-editor (MIT) and others.
+Full license text: LICENSE. Corresponding source: /workspace/NeoWarp + this project.
+
+All assets are bundled locally. No network permission is declared.

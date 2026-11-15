@@ -1,0 +1,22 @@
+{
+  "version": "2.3.0",
+  "mode": "full",
+  "source": "/workspace/NeoWarp",
+  "output": "/workspace/NeoWarpHarmony/entry/src/main/resources/rawfile/neowarp",
+  "builtAt": "2026-11-14T16:47:07.891Z",
+  "copiedFiles": 1.4001672573472284e+23,
+  "injectedHtmlFiles": 19,
+  "brotliDecompressed": 292,
+  "fileCount": 1453,
+  "totalBytes": 124681718,
+  "totalMB": 118.91,
+  "offlineGuarantees": [
+    "no ohos.permission.INTERNET in module.json5",
+    "Content-Security-Policy connect-src self",
+    "harmony-bridge.js rejects external fetch",
+    "ArkWeb onInterceptRequest maps all requests to rawfile"
+  ],
+  "libraryAssets": 0,
+  "extensionAssets": 292,
+  "note": "完整网页版站点（含 scratch-gui webpack bundle）已内置。"
+}
