@@ -33,7 +33,7 @@
     "art/icon.png": "c8a3726f8489fd5d46d59d9b7221763e4aef9555b3e94c191ad5e5f135a83ddb",
     "art/icon.svg": "c347b8dc19ccda281c245eae7d2dc8a7465fe30e15a976ec1a114dfbd896038c",
     "art/rich-presence-icon.png": "6cc43ce533fa9e60e275d1de71aeabbcd18aa662c322ba814ec4fc47aed10e34",
-    "assets/harmony-bridge.js": "7338fae9bbd691de04482581d4f650b2ee311af06633ca899f64c7b62b190224",
+    "assets/harmony-bridge.js": "90f928e631f96ff1c8cb1e17ef6cfc476379ed2865397fd8f1a3e93c44307bea",
     "assets/monaco/vs/abap-D-t0cyap.js": "80e43a53268d6a4c632ff9985bee1e7d0c6910cceadde464aa234bf36d0a6737",
     "assets/monaco/vs/apex-CcIm7xu6.js": "f65a5a9a27d2b6c2a2ec55a670486073ca76203fc63d5a3ef91a889fe3c6bda8",
     "assets/monaco/vs/assets/css.worker-URu8fCFR.js": "7d3cfe5eb15cbfcb74cd50d29ebd9cf02dbf85078f076e6bab5fb8bdf6866ff1",
@@ -191,9 +191,9 @@
     "assets/shims/desktop-settings.js": "d07b658d665a5d5133afba4f0e2922060ab71a7ed669769454ea82315c37f262",
     "assets/shims/editor.js": "8c1c1b60f2cd3a95de3e465d59b2bcf77f4d366a309852b965255a62b953921d",
     "assets/shims/extension-editor.js": "15c1d588e61d5094bc3314fe7f6fb65180a4a92afb0e3ab29db2637e54bcfb60",
-    "assets/shims/home.js": "b78d4fc9485a6df25368803dbdefee727db28ffe2074fb3691077701cb6f113a",
+    "assets/shims/home.js": "210bab1efa77d96a0bf0e0d98b44bb7c3d0f902710e9273bc72be07b01e5e142",
     "assets/shims/image-editor.js": "9ce69df9a88c79833c59685def96b1891f04d88d8ac4bd08d1b41eb524d45238",
-    "assets/shims/misc.js": "7caec028c2b8a1ec9485a8e998f2cc78884a332e193021f2cc75a98d8c99a167",
+    "assets/shims/misc.js": "bb1c943f3a038cb60d31339853bf80bc4fd7443fdd9871827b5babdac80fc7b0",
     "assets/vendor/mqtt.min.js": "0c1e060058b2ab2b1de73dd026c0b6d2b48104aeacc9deea2652fe367750f076",
     "assets/vendor/qrcode.min.js": "bb2365e4902f4f84852cf4025e6f6a60325a682aeafa43fb63b7fc8f098d1ef2",
     "contact/contact.html": "2f925e22dc48592d538ff2cb4d90f6ded61e530dac7230c406ac88953b4487f8",
@@ -1454,7 +1454,7 @@
     "remote/index.html": "6595757aa3eff275395e865878ef9664e0ba4a3e3efed978934afcf422d92859",
     "sw.js": "aa69520c00bd7040e86a5262914178ad69ba2236d3ce41bd2edb8aa9f3d5a9b3",
     "task-manager/task-manager.html": "a28e953c568ada090c5ecc660c861d0f1f66db5d2afa2d27e0b0d9ed0d57562f",
-    "todo-list/todo-list.html": "7cad30a5c59c1186460c4bb2881af6aa9b647b5724f3bfa08d675cd18b557ce3",
-    "version.json": "a1a23d9f3fe69b7df5830885d237fba315cc8621bc36fd0c88efaaa15e118232"
+    "todo-list/todo-list.html": "2f0f18b6afc3aef2078689dc14cbf25c440669b17b3ec30238fbcb22bf43278f",
+    "version.json": "71a1380a28547d72c55adb44c44d3fca64f610a702b81f8b38c235897e1aaa24"
   }
 }

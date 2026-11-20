@@ -8,7 +8,7 @@
  */
 
 import { window } from '@kit.ArkUI';
-import { common, abilityAccessCtrl, Permissions, PermissionRequestResult } from '@kit.AbilityKit';
+import { common, abilityAccessCtrl, Permissions, PermissionRequestResult, Want } from '@kit.AbilityKit';
 import { WindowHost } from '../bridge/NativeServices';
 import { WindowBus } from '../common/WindowBus';
 import { Runtime } from '../common/Runtime';
@@ -124,6 +124,21 @@ export class SubWindowManager implements WindowHost {
 
   currentSnapshot(): DeviceSnapshot {
     return Runtime.get().snapshot;
+  }
+
+  async openExternal(url: string): Promise<boolean> {
+    if (this.context === null) return false;
+    try {
+      const want: Want = {
+        action: 'ohos.want.action.viewData',
+        entities: ['entity.system.browsable'],
+        uri: url
+      };
+      await (this.context as common.UIAbilityContext).startAbility(want);
+      return true;
+    } catch (_e) {
+      return false;
+    }
   }
 
   async requestPermissions(names: string[]): Promise<boolean> {

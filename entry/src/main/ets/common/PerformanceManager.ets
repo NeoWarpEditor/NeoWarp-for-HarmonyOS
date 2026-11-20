@@ -119,8 +119,9 @@ export class PerformanceManager {
     let threadCount: number = 1;
 
     try {
-      // API 26: hidebug.getAppCpuUsage() / getSystemMemInfo()
-      cpuPercent = hidebug.getCpuUsage();
+      // API 26: hidebug.getCpuUsage() 返回的是比例（0.5 表示 50%），
+      // 而 task-manager 以百分比展示，需 ×100，否则 CPU 常年显示 0~1。
+      cpuPercent = hidebug.getCpuUsage() * 100;
       const mem = hidebug.getSystemMemInfo();
       const totalKB: number = Number(mem.totalMem);
       const freeKB: number = Number(mem.freeMem);

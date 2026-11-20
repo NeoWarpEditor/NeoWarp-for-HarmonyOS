@@ -45,6 +45,7 @@ interface VisibilityArgs { visible: boolean; }
 interface SpriteStatsArgs { sprites: SpriteStat[]; }
 interface PermissionArgs { name: string; }
 interface BusPublishArgs { data: string; }
+interface OpenExternalArgs { url: string; }
 
 /** 由 UI 层实现的窗口/设备宿主能力，避免服务层反向依赖 ArkUI 组件 */
 export interface WindowHost {
@@ -57,6 +58,7 @@ export interface WindowHost {
   publish: (data: string) => void;
   requestPermissions: (names: string[]) => Promise<boolean>;
   currentSnapshot: () => DeviceSnapshot;
+  openExternal: (url: string) => Promise<boolean>;
 }
 
 export class NativeServices {
@@ -108,6 +110,7 @@ export class NativeServices {
       case 'window.fullscreen': return this.windowFullscreen(this.parse<FullscreenArgs>(argsJson));
       case 'window.has': return this.windowHas(this.parse<WindowKeyArgs>(argsJson));
       case 'bus.publish': return this.busPublish(this.parse<BusPublishArgs>(argsJson));
+      case 'system.openExternal': return await this.openExternal(this.parse<OpenExternalArgs>(argsJson));
       case 'media.enumerateDevices': return this.enumerateMediaDevices();
       case 'media.requestPermission': return await this.requestMediaPermission(this.parse<PermissionArgs>(argsJson));
       case 'perf.setProfile': return this.setProfile(this.parse<PerfProfileArgs>(argsJson));
@@ -403,6 +406,22 @@ export class NativeServices {
       outputDir: this.sandbox + '/' + PROJECT_DIR,
       engine: 'rawfile://neowarp/packager/standalone.html'
     }));
+  }
+
+  /**
+   * 用系统浏览器打开受信任外链（主页 GitHub 等）。
+   * 仅允许 http(s)，离线站点内容本身不依赖网络；这只是把链接交给系统。
+   */
+  private async openExternal(args: OpenExternalArgs): Promise<BridgeEnvelope> {
+    const url: string = args && args.url ? args.url : '';
+    if (!/^https?:\/\//i.test(url)) {
+      return errEnvelope(BRIDGE_ERR_BAD_ARGS, 'only http(s) links allowed');
+    }
+    if (this.host === null) {
+      return errEnvelope(BRIDGE_ERR_IO, 'window host not attached');
+    }
+    const opened: boolean = await this.host.openExternal(url);
+    return opened ? okEnvelope('{"opened":true}') : errEnvelope(BRIDGE_ERR_IO, 'no browser available');
   }
 
   private distributedDiscover(): BridgeEnvelope {

@@ -54,15 +54,23 @@
       // 鸿蒙版改由 ArkTS PerformanceManager 采样，字段做等价映射。
       getSystemStats: function () {
         return invoke('system', 'getStats', {}).then(function (s) {
-          if (!s) return { cpuPercent: 0, ramUsedMB: 0, usedMemory: 0, totalMemory: 0 };
+          // 同时提供桌面版字段（ramUsedMB/ramTotalMB）与字节字段，
+          // task-manager.html 读取 ramUsedMB/ramTotalMB，缺一即显示 NaN。
+          if (!s) return {
+            cpuPercent: 0, ramUsedMB: 0, ramTotalMB: 0,
+            usedMemory: 0, totalMemory: 0, coreCount: 0, threadCount: 0
+          };
           var stats = s.system || s;
+          var usedMB = stats.memoryUsedMB || 0;
+          var totalMB = stats.memoryTotalMB || 0;
           return {
-            cpuPercent: stats.cpuPercent,
-            ramUsedMB: stats.memoryUsedMB,
-            usedMemory: stats.memoryUsedMB * 1024 * 1024,
-            totalMemory: stats.memoryTotalMB * 1024 * 1024,
-            coreCount: stats.coreCount,
-            threadCount: stats.threadCount
+            cpuPercent: stats.cpuPercent || 0,
+            ramUsedMB: usedMB,
+            ramTotalMB: totalMB,
+            usedMemory: usedMB * 1024 * 1024,
+            totalMemory: totalMB * 1024 * 1024,
+            coreCount: stats.coreCount || 0,
+            threadCount: stats.threadCount || 0
           };
         });
       },
@@ -89,7 +97,8 @@
     });
     host.register('system', {
       getStats: function () { return invoke('system', 'getStats', {}); },
-      getMemoryInfo: function () { return invoke('system', 'getMemoryInfo', {}); }
+      getMemoryInfo: function () { return invoke('system', 'getMemoryInfo', {}); },
+      openExternal: function (a) { return invoke('system', 'openExternal', a || {}); }
     });
     host.register('theme', {
       get: function () { return invoke('theme', 'get', {}); },
@@ -204,6 +213,19 @@
       abort: function () { chunks.length = 0; return Promise.resolve(); }
     });
   }
+
+  /* --------------------------- 在线状态语义修正 --------------------------- */
+  /* ArkWeb 无 INTERNET 权限，navigator.onLine 可能恒为 false，导致 GUI 误判为
+     "离线"并禁用本地功能、弹出离线提示。本应用所有资源均内置于 rawfile，
+     本地功能与在线与否无关；统一报告在线，避免误判（issue 1/2）。 */
+  try {
+    if (global.navigator) {
+      Object.defineProperty(global.navigator, 'onLine', {
+        configurable: true,
+        get: function () { return true; }
+      });
+    }
+  } catch (e) { /* 只读实现下忽略 */ }
 
   /* --------------------------- 离线强保证（渲染层） --------------------------- */
   // 1) Service Worker 在 file/resource 下不可用，且缓存职责已由原生拦截层承担
@@ -398,13 +420,22 @@
   global.NWWindow = nativeWindowApi;
   NW.window = nativeWindowApi;
 
+  /** 受信任外链白名单：交给系统浏览器打开，不加载进本离线 ArkWeb */
+  function openExternal (url) {
+    invoke('system', 'openExternal', { url: url }).catch(function () {});
+  }
+  var TRUSTED_EXTERNAL = /^https?:\/\/(github\.com|www\.github\.com|shiyuan-318\.github\.io|neowarp\.org|scratch\.mit\.edu|turbowarp\.org)($|\/)/i;
+
   /* 36-app-windows.js 里 newTab 路由走 window.open；这里统一转成真实子窗口。
      返回 truthy，避免其 "弹窗被拦截" 分支把当前窗口整页跳转。 */
   var originalOpen = global.open;
   global.open = function (url, target, features) {
     var raw = String(url || '');
     var external = /^https?:\/\//i.test(raw) && raw.indexOf(global.location.origin) !== 0;
-    if (external) return null;   // 离线版拒绝外链
+    if (external) {
+      if (TRUSTED_EXTERNAL.test(raw)) openExternal(raw);
+      return null;   // 不进入本窗口，避免离线 ArkWeb 尝试加载外站
+    }
     var rel = toRelativeUrl(raw);
     var key = routeKeyForUrl(rel);
     var route = key ? (ROUTES[key] || {}) : {};
@@ -493,6 +524,24 @@
   };
 
   installBus();
+
+  /* 主页 GitHub 等外链是 <a href target="_blank">，不会走 window.open。
+     ArkWeb 无 INTERNET 权限，直接点击会失败；这里拦截受信任外链，
+     交给系统浏览器打开（等价于桌面版 shell.openExternal）。 */
+  if (global.document && global.document.addEventListener) {
+    global.document.addEventListener('click', function (event) {
+      var node = event.target;
+      // 向上找最近的 <a>
+      while (node && node.tagName && String(node.tagName).toLowerCase() !== 'a') {
+        node = node.parentNode;
+      }
+      if (!node || !node.href) return;
+      var href = String(node.href);
+      if (!TRUSTED_EXTERNAL.test(href)) return;
+      if (event.preventDefault) event.preventDefault();
+      openExternal(href);
+    }, true);
+  }
 
   // 通知 ArkTS：Web 运行时已就绪，可以开始推送设备形态与采样数据
   if (global.document && global.document.readyState !== 'loading') {

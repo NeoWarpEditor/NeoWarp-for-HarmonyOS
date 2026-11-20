@@ -57,7 +57,10 @@
   global.TaskManagerPreload = {
     getSystemStats: function () {
       return editorCall('getSystemStats', [], 10000).then(function (result) {
-        return result || { cpuPercent: 0, ramUsedMB: 0, usedMemory: 0, totalMemory: 0 };
+        return result || {
+          cpuPercent: 0, ramUsedMB: 0, ramTotalMB: 0,
+          usedMemory: 0, totalMemory: 0, coreCount: 0, threadCount: 0
+        };
       });
     },
     getSpriteStats: function () {

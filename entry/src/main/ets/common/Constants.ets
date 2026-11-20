@@ -116,7 +116,7 @@ export const ALLOWED_BRIDGE_METHODS: string[] = [
   'fs.openProject', 'fs.saveProject', 'fs.saveAs', 'fs.listRecent', 'fs.deleteRecent',
   'fs.readAsset', 'fs.writeAsset',
   'crypto.hash', 'crypto.encrypt', 'crypto.decrypt',
-  'system.getStats', 'system.getMemoryInfo',
+  'system.getStats', 'system.getMemoryInfo', 'system.openExternal',
   'theme.get', 'theme.set',
   'window.open', 'window.close', 'window.focus', 'window.setTitle', 'window.fullscreen', 'window.has',
   'media.enumerateDevices', 'media.requestPermission',

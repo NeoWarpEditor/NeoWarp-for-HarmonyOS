@@ -38,7 +38,8 @@ export class HarmonyBridge {
   private services: NativeServices;
   private perf: PerformanceManager;
   private context: common.UIAbilityContext;
-  private cache: Map<string, string> = new Map<string, string>();
+  // 缓存保存原始字节，按 MIME 以文本或二进制方式返回，避免二进制资源被 UTF-8 解码破坏
+  private cache: Map<string, Uint8Array> = new Map<string, Uint8Array>();
   private manifest: AssetManifest | null = null;
   private snapshot: DeviceSnapshot | null = null;
 
@@ -118,14 +119,14 @@ export class HarmonyBridge {
         'index.html',
         'assets/nw-core.js',
         'assets/harmony-bridge.js',
-        'gui/index.html',
+        'gui/gui.html',
         'gui/index.js'
       ];
       for (const path of hot) {
         const full: string = RAWFILE_ROOT + path;
         try {
           const bytes = this.context.resourceManager.getRawFileContentSync(full);
-          this.putCache(full, this.textFromBytes(new Uint8Array(bytes)));
+          this.putCache(full, new Uint8Array(bytes));
         } catch (_ignored) { /* 可选热文件不存在时跳过 */ }
       }
     } catch (_e) {
@@ -210,29 +211,51 @@ export class HarmonyBridge {
 
   private respondAsset(relative: string): WebResourceResponse | null {
     const full: string = RAWFILE_ROOT + relative;
-    let content: string | undefined = this.cache.get(full);
-    if (content === undefined) {
+    let bytes: Uint8Array | undefined = this.cache.get(full);
+    if (bytes === undefined) {
       try {
-        const bytes = this.context.resourceManager.getRawFileContentSync(full);
-        content = this.textFromBytes(new Uint8Array(bytes));
-        this.putCache(full, content);
+        const raw = this.context.resourceManager.getRawFileContentSync(full);
+        bytes = new Uint8Array(raw);
+        this.putCache(full, bytes);
       } catch (_e) {
         return this.emptyResponse();
       }
     }
+    const mime: string = this.mimeOf(relative);
     const response = new WebResourceResponse();
-    response.setResponseMimeType(this.mimeOf(relative));
-    response.setResponseEncoding('utf-8');
-    response.setResponseData(content as string);
+    response.setResponseMimeType(mime);
     response.setResponseHeader([
       { headerKey: 'Content-Security-Policy', headerValue: OFFLINE_CSP },
       { headerKey: 'Cache-Control', headerValue: 'public, max-age=31536000, immutable' },
       { headerKey: 'X-NeoWarp-Offline', headerValue: '1' }
     ]);
+    if (this.isTextAsset(relative)) {
+      // 文本资源：按 UTF-8 解码为字符串（索引 HTML/JS/CSS/JSON/SVG 等）
+      response.setResponseEncoding('utf-8');
+      response.setResponseData(this.textFromBytes(bytes));
+    } else {
+      // 二进制资源：直接传 ArrayBuffer，保持字节原样（PNG/JPG/WEBP/字体/音频/WASM/ZIP）
+      // 若误用 UTF-8 解码，0x89PNG 等字节会被替换字符破坏，导致所有图片/图标/声音加载失败。
+      response.setResponseData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+    }
     response.setResponseCode(200);
     response.setReasonMessage('OK');
     response.setResponseIsReady(true);
     return response;
+  }
+
+  /** 判定是否文本资源；除明确文本类型外一律按二进制处理，避免任何编码损坏 */
+  private isTextAsset(path: string): boolean {
+    const lower: string = path.toLowerCase();
+    if (lower.endsWith('.br') || lower.endsWith('.gz') || lower.endsWith('.zst')) return false;
+    const textExt: string[] = [
+      '.html', '.htm', '.js', '.mjs', '.cjs', '.css', '.json', '.json5',
+      '.svg', '.txt', '.webmanifest', '.map', '.xml', '.md', '.ts', '.tsx'
+    ];
+    for (const ext of textExt) {
+      if (lower.endsWith(ext)) return true;
+    }
+    return false;
   }
 
   private emptyResponse(): WebResourceResponse {
@@ -251,23 +274,39 @@ export class HarmonyBridge {
   }
 
   private mimeOf(path: string): string {
-    if (path.endsWith('.html')) return 'text/html';
-    if (path.endsWith('.js')) return 'application/javascript';
-    if (path.endsWith('.css')) return 'text/css';
-    if (path.endsWith('.json') || path.endsWith('.webmanifest')) return 'application/json';
-    if (path.endsWith('.svg')) return 'image/svg+xml';
-    if (path.endsWith('.png')) return 'image/png';
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';
-    if (path.endsWith('.webp')) return 'image/webp';
-    if (path.endsWith('.wav')) return 'audio/wav';
-    if (path.endsWith('.mp3')) return 'audio/mpeg';
-    if (path.endsWith('.woff2')) return 'font/woff2';
-    if (path.endsWith('.ttf')) return 'font/ttf';
-    if (path.endsWith('.wasm')) return 'application/wasm';
+    const lower: string = path.toLowerCase().split('?')[0];
+    if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'text/html';
+    if (lower.endsWith('.js') || lower.endsWith('.mjs') || lower.endsWith('.cjs')) return 'application/javascript';
+    if (lower.endsWith('.css')) return 'text/css';
+    if (lower.endsWith('.json') || lower.endsWith('.webmanifest')) return 'application/json';
+    if (lower.endsWith('.xml')) return 'application/xml';
+    if (lower.endsWith('.txt') || lower.endsWith('.md')) return 'text/plain';
+    if (lower.endsWith('.svg')) return 'image/svg+xml';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.ico')) return 'image/x-icon';
+    if (lower.endsWith('.bmp')) return 'image/bmp';
+    if (lower.endsWith('.avif')) return 'image/avif';
+    if (lower.endsWith('.wav')) return 'audio/wav';
+    if (lower.endsWith('.mp3')) return 'audio/mpeg';
+    if (lower.endsWith('.ogg') || lower.endsWith('.oga')) return 'audio/ogg';
+    if (lower.endsWith('.m4a')) return 'audio/mp4';
+    if (lower.endsWith('.mp4')) return 'video/mp4';
+    if (lower.endsWith('.webm')) return 'video/webm';
+    if (lower.endsWith('.woff')) return 'font/woff';
+    if (lower.endsWith('.woff2')) return 'font/woff2';
+    if (lower.endsWith('.ttf')) return 'font/ttf';
+    if (lower.endsWith('.otf')) return 'font/otf';
+    if (lower.endsWith('.eot')) return 'application/vnd.ms-fontobject';
+    if (lower.endsWith('.wasm')) return 'application/wasm';
+    if (lower.endsWith('.zip') || lower.endsWith('.sb3') || lower.endsWith('.sb2')) return 'application/zip';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
     return 'application/octet-stream';
   }
 
-  private putCache(key: string, value: string): void {
+  private putCache(key: string, value: Uint8Array): void {
     if (this.cache.size >= CACHE_LIMIT) {
       const first: string | undefined = this.cache.keys().next().value;
       if (first !== undefined) {

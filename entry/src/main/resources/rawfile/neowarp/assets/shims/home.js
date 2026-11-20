@@ -203,6 +203,11 @@
     },
 
     getRecentProjects: function () {
+      // 鸿蒙版受「安全的访问文件」授权限制，最近项目无法可靠恢复访问句柄，
+      // 入口只会误导用户，因此在 HarmonyOS 上统一隐藏（issue 17）。
+      if (global.NWHarmony && global.NWHarmony.available) {
+        return Promise.resolve({ show: false, projects: [] });
+      }
       var show = storage.getSettings().showRecentProjects !== false;
       if (!show) return Promise.resolve({ show: false, projects: [] });
       return readRecent().then(function (entries) {

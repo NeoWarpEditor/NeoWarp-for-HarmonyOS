@@ -999,13 +999,18 @@
             }
             if (!todo) return;
             todo.completed = !todo.completed;
+            // iOS 备忘录式：勾选完成后自动沉到列表底部，取消勾选则回到未完成区顶部
+            var idx = todos.indexOf(todo);
+            if (idx >= 0) todos.splice(idx, 1);
             if (todo.completed) {
                 todo.completedAt = new Date().toISOString();
+                todos.push(todo);
                 if (reminders[id]) {
                     cancelReminder(id);
                 }
             } else {
                 delete todo.completedAt;
+                todos.unshift(todo);
             }
             saveTodos();
             renderTodos();
