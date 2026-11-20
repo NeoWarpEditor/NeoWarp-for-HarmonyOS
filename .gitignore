@@ -12,6 +12,9 @@ signing/
 dist/*-report.json
 dist/preview*.png
 
+# ---------- HAP 构建产物（体积巨大，走本地分发，不入库）----------
+*.hap
+
 # ---------- 编辑器 / 系统 ----------
 .DS_Store
 *.swp

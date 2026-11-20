@@ -4,9 +4,9 @@
   "source": "/workspace/NeoWarp",
   "output": "/workspace/NeoWarpHarmony/entry/src/main/resources/rawfile/neowarp",
   "builtAt": "2026-11-20T12:01:08.779Z",
-  "copiedFiles": 1.4001672573472284e+23,
+  "copiedFiles": 1304,
   "injectedHtmlFiles": 19,
-  "brotliDecompressed": 292,
+  "brotliDecompressed": 1596,
   "fileCount": 1453,
   "totalBytes": 124687354,
   "totalMB": 118.91,
@@ -16,7 +16,7 @@
     "harmony-bridge.js rejects external fetch",
     "ArkWeb onInterceptRequest maps all requests to rawfile"
   ],
-  "libraryAssets": 0,
+  "libraryAssets": 1304,
   "extensionAssets": 292,
-  "note": "完整网页版站点（含 scratch-gui webpack bundle）已内置。"
+  "note": "Scratch 素材库（造型/声音/背景/角色，svg/wav/png）已从本地 NeoWarp 2.4.0 dist-library-files 内置，brotli 预解压，无需联网下载。"
 }
