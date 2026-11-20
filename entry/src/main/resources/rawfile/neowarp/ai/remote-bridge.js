@@ -15,6 +15,12 @@
 
   var TOKEN = window.__NEOWARP_REMOTE_TOKEN__ || '';
   var BOOT = window.__NEOWARP_REMOTE_BOOT__ || {};
+
+  // 离线/本地窗口（如 HarmonyOS 应用内的 SOLO、AI 助手）没有服务端注入的
+  // token 与首屏快照，不应进入远程模式：否则 EventSource 连接 /api/events
+  // 必然失败，误报「与电脑的连接已断开」。真远程模式由服务端在脚本前注入
+  // TOKEN/BOOT，届时下方逻辑照常启用。
+  if (!TOKEN && !BOOT) return;
   var listeners = [];
   var source = null;
   var retryTimer = 0;

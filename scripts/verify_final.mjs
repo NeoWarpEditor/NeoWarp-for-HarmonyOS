@@ -127,6 +127,10 @@ add('待办勾选后沉底（issue 13）',
 add('鸿蒙版隐藏最近项目（issue 17）',
   fs.readFileSync(`${PROJ}/entry/src/main/resources/rawfile/neowarp/assets/shims/home.js`, 'utf8').includes('NWHarmony.available'),
   '避免失效的文件授权入口');
+add('本地 AI 窗口不误报断线（issue 3）',
+  /if \(!TOKEN && !BOOT\) return;/.test(fs.readFileSync(
+    `${PROJ}/entry/src/main/resources/rawfile/neowarp/ai/remote-bridge.js`, 'utf8')),
+  '无 token 时不进入远程模式');
 
 // 工具链版本
 const env = { ...process.env, PATH: `${CLI}/bin:${process.env.JAVA_HOME || ''}/bin:${process.env.PATH}` };
