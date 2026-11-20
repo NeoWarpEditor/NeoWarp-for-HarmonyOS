@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "org.neowarp.harmony",
     "vendor": "NeoWarp",
-    "versionCode": 2030000,
-    "versionName": "2.3.0",
+    "versionCode": 1,
+    "versionName": "0.0.1",
     "icon": "$media:app_icon",
     "label": "$string:app_name",
     "debug": false,

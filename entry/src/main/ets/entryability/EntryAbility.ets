@@ -17,6 +17,7 @@ import { NativeServices } from '../bridge/NativeServices';
 import { HarmonyBridge } from '../bridge/HarmonyBridge';
 import { Runtime } from '../common/Runtime';
 import { DeviceProfile } from '../common/DeviceProfile';
+import { SubWindowManager } from '../window/SubWindowManager';
 
 export default class EntryAbility extends UIAbility {
   private runtime: Runtime = Runtime.get();
@@ -49,6 +50,11 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    // 原生服务把窗口能力委托给真实子窗口管理器
+    const services: NativeServices | null = this.runtime.services;
+    if (services !== null) {
+      services.attachHost(SubWindowManager.get());
+    }
     windowStage.loadContent('pages/Index').then(() => {
       this.setupWindow(windowStage);
     }).catch((_e: Object) => { /* 加载失败由 Web 层错误回调兜底 */ });
@@ -58,7 +64,11 @@ export default class EntryAbility extends UIAbility {
     try {
       const win: window.Window = windowStage.getMainWindowSync();
       this.mainWindow = win;
-      win.setWindowLayoutFullScreen(true, (_e: Object) => { /* 沉浸式由 ArkUI 处理安全区 */ });
+      // 保留系统窗口装饰（标题栏/关闭/最大化按钮），等价 Windows 版默认 frame
+      try {
+        win.setWindowDecorVisible(true);
+      } catch (_e) { /* 手机/平板形态无系统装饰 */ }
+      SubWindowManager.get().attach(windowStage, this.context as common.UIAbilityContext, win);
 
       const rect = win.getWindowProperties().windowRect;
       this.refreshSnapshot(px2vp(rect.width), px2vp(rect.height));
@@ -82,18 +92,12 @@ export default class EntryAbility extends UIAbility {
     }
   }
 
-  /** 只更新形态快照并广播，Web 组件保持同一实例 → 编辑状态不丢失 */
+  /** 形态仅用于原生性能调度；界面完全由 Web 响应式布局，不注入任何原生 UI */
   private refreshSnapshot(widthVp: number, heightVp: number): void {
     const snapshot = DeviceProfile.snapshot(widthVp, heightVp, display.getDefaultDisplaySync().densityDPI / 160);
     this.runtime.snapshot = snapshot;
     this.runtime.perf.applyForm(snapshot.form);
-    if (this.runtime.bridge !== null && this.runtime.webReady) {
-      this.runtime.bridge.notifyDeviceChange(snapshot);
-    }
-    // 通知 UI 重排（折痕避让/列数/侧栏），Web 组件保持同一实例
-    if (this.runtime.deviceChangeHandler !== null) {
-      this.runtime.deviceChangeHandler();
-    }
+    // 不向 Web 注入形态/主题事件，保持与 Windows 版一致的界面来源
   }
 
   onForeground(): void {

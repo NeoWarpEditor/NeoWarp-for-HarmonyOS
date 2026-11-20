@@ -4,12 +4,14 @@
  * 加载顺序：nw-core.js → shims/*.js → harmony-bridge.js（必须最后）
  *
  * 职责：
- *  1) 把 ArkTS 原生能力注册进既有 NW.host 服务总线（web/src/core/30-host.js），
- *     使所有 shim 无需改动即可调用鸿蒙原生能力；
- *  2) polyfill File System Access API → ArkTS 文件桥（ArkWeb 不支持该 API）；
+ *  1) 把 ArkTS 原生能力注册进既有 NW.host 服务总线（30-host.js），shim 零改动；
+ *  2) polyfill File System Access API → ArkTS 文件桥；
  *  3) 禁用 Service Worker 与外部网络请求（离线强保证的渲染层兜底）；
- *  4) 接收设备形态 / 主题 / 动作 / task-manager 事件；
- *  5) 把 VM 角色统计回传给 ArkTS 侧 task-manager 面板。
+ *  4) 把页内 iframe 浮层窗口 / window.open 新标签页统一替换为 OS 级真实子窗口，
+ *     等价 Windows 版 src-main/windows/*.js 的独立 BrowserWindow；
+ *  5) 用原生总线镜像 BroadcastChannel，保证各真实窗口之间的 RPC 联动。
+ *
+ * 注意：此处不新增任何界面元素，全部可见内容仍由 Web 站点渲染。
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -266,15 +268,6 @@
       }
     });
 
-    rpc.on('native', 'action', function (payload) {
-      if (payload && payload.id) handleAction(payload.id);
-    });
-    rpc.on('native', 'menu', function (payload) {
-      if (payload && payload.id) handleAction(payload.id);
-    });
-    rpc.on('native', 'window_open', function (payload) {
-      if (payload && payload.id) handleWindowOpen(payload.id);
-    });
     rpc.on('native', 'openUri', function (payload) {
       if (payload && payload.uri && typeof global.CustomEvent === 'function') {
         global.dispatchEvent(new CustomEvent('neowarp:openUri', { detail: payload }));
@@ -282,42 +275,202 @@
     });
   }
 
-  var ACTION_WINDOW = {
-    new: 'home', open: 'home', save: 'editor', packager: 'packager',
-    settings: 'desktop-settings', addons: 'addons',
-    task_manager: 'task-manager', menu_file: 'home', menu_view: 'editor'
+  /* ================ 真实系统窗口（替代页内 iframe 浮层 / 新标签页） ================ */
+  /* Windows 版每个功能都是独立的 BrowserWindow；HarmonyOS 上由 ArkTS
+     createSubWindow 承载，窗口内仍是同一份离线页面，界面完全一致。 */
+  var ROUTES = NW.routes || {};
+  var winSeq = 0;
+  var handles = Object.create(null);
+  // 所有窗口共享的窗口存在性表（由原生广播同步，跨 ArkWeb 实例一致）
+  var windowStates = Object.create(null);
+
+  /** 任意形式的站内 URL → rawfile 相对路径 */
+  function toRelativeUrl (u) {
+    var v = String(u || '');
+    var m = v.match(/^[a-z][a-z0-9+.-]*:\/\/[^/]*\/(.*)$/i);
+    if (m) v = m[1];
+    var i = v.indexOf('neowarp/');
+    if (i >= 0) v = v.substring(i + 'neowarp/'.length);
+    v = v.replace(/^(\.\.\/)+/, '').replace(/^\.\//, '').replace(/^\/+/, '');
+    return v.split('?')[0].split('#')[0] || 'index.html';
+  }
+
+  function routeKeyForUrl (url) {
+    var rel = toRelativeUrl(url);
+    var keys = Object.keys(ROUTES);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (ROUTES[k] && toRelativeUrl(ROUTES[k].url) === rel) return k;
+    }
+    return '';
+  }
+
+  function defaultTitle (key) {
+    var r = ROUTES[key];
+    return (r && r.title) || key;
+  }
+
+  /** 兼容 NWWindow.open 的对象参数与旧代码的字符串 key */
+  function normalizeWindow (input) {
+    var o;
+    if (typeof input === 'string') {
+      var route = ROUTES[input] || {};
+      o = {
+        key: input,
+        title: route.title || input,
+        url: route.url || (input + '/index.html'),
+        width: route.width || 980,
+        height: route.height || 700
+      };
+    } else {
+      o = input || {};
+    }
+    var key = o.key || routeKeyForUrl(o.url) || ('nw-win-' + (++winSeq));
+    var fallback = ROUTES[key] || {};
+    return {
+      key: key,
+      title: o.title || defaultTitle(key),
+      url: toRelativeUrl(o.url || fallback.url || 'index.html'),
+      width: o.width || fallback.width || 980,
+      height: o.height || fallback.height || 700
+    };
+  }
+
+  function makeHandle (o) {
+    return {
+      key: o.key,
+      title: o.title,
+      url: o.url,
+      close: function () { nativeWindowApi.close(o.key); },
+      focus: function () { nativeWindowApi.focus(o.key); },
+      minimize: function () { /* 由系统窗口管理 */ },
+      restore: function () { nativeWindowApi.focus(o.key); },
+      toggleMaximize: function () { /* 由系统窗口管理 */ },
+      isMinimized: function () { return false; },
+      isMaximized: function () { return false; },
+      setTitle: function (next) {
+        o.title = next;
+        invoke('window', 'setTitle', { key: o.key, title: next }).catch(function () {});
+      }
+    };
+  }
+
+  var nativeWindowApi = {
+    open: function (options) {
+      var o = normalizeWindow(options);
+      if (handles[o.key]) {
+        invoke('window', 'focus', { key: o.key }).catch(function () {});
+        return handles[o.key];
+      }
+      handles[o.key] = makeHandle(o);
+      windowStates[o.key] = true;
+      invoke('window', 'open', {
+        key: o.key, title: o.title, url: o.url,
+        width: o.width, height: o.height
+      }).catch(function () { delete handles[o.key]; });
+      return handles[o.key];
+    },
+    close: function (key) {
+      delete handles[key];
+      delete windowStates[key];
+      invoke('window', 'close', { key: key }).catch(function () {});
+      return true;
+    },
+    focus: function (key) {
+      invoke('window', 'focus', { key: key }).catch(function () {});
+      return !!handles[key];
+    },
+    has: function (key) { return !!handles[key] || !!windowStates[key]; },
+    get: function (key) { return handles[key] || null; },
+    closeByFrame: function () {
+      // 独立窗口没有 iframe frameWindow；关闭请求落到自己所在的真实窗口
+      var key = currentWindowKey();
+      if (key) nativeWindowApi.close(key);
+      return !!key;
+    },
+    closeAll: function () {
+      Object.keys(handles).forEach(function (k) { nativeWindowApi.close(k); });
+    },
+    count: function () { return Object.keys(handles).length; }
   };
 
-  function handleAction (id) {
-    if (typeof global.CustomEvent === 'function') {
-      global.dispatchEvent(new CustomEvent('neowarp:action', { detail: { id: id } }));
-    }
-    var key = ACTION_WINDOW[id];
-    if (key) handleWindowOpen(key);
+  // 覆盖 40-window-manager.js 的页内浮层实现
+  global.NWWindow = nativeWindowApi;
+  NW.window = nativeWindowApi;
+
+  /* 36-app-windows.js 里 newTab 路由走 window.open；这里统一转成真实子窗口。
+     返回 truthy，避免其 "弹窗被拦截" 分支把当前窗口整页跳转。 */
+  var originalOpen = global.open;
+  global.open = function (url, target, features) {
+    var raw = String(url || '');
+    var external = /^https?:\/\//i.test(raw) && raw.indexOf(global.location.origin) !== 0;
+    if (external) return null;   // 离线版拒绝外链
+    var rel = toRelativeUrl(raw);
+    var key = routeKeyForUrl(rel);
+    var route = key ? (ROUTES[key] || {}) : {};
+    nativeWindowApi.open({
+      key: key || ('nw-tab-' + (++winSeq)),
+      title: key ? defaultTitle(key) : rel,
+      url: rel,
+      width: route.width || 980,
+      height: route.height || 700
+    });
+    return {};
+  };
+
+  /** 子窗口页面从 fragment 里取自己的 key，便于 window.close() 精确关闭 */
+  function currentWindowKey () {
+    try {
+      var m = global.location.hash.match(/nwwin=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : '';
+    } catch (e) { return ''; }
   }
 
-  function handleWindowOpen (key) {
-    // 优先使用网页版自带的页内浮层窗口管理器；不可用时回落到 iframe 浮层
-    if (global.NWWindow && typeof global.NWWindow.open === 'function') {
-      try { global.NWWindow.open(key); return; } catch (e) { /* 回落 */ }
-    }
-    openFallback(key);
+  global.close = function () {
+    var key = currentWindowKey();
+    if (key) invoke('window', 'close', { key: key }).catch(function () {});
+  };
+
+  /* --------------- 跨窗口 RPC：把 BroadcastChannel 镜像到原生总线 --------------- */
+  /* 各子窗口是独立 ArkWeb 实例，BroadcastChannel 不互通；由 ArkTS 转发，
+     等价 Windows 版主进程在多个 BrowserWindow 之间代理 IPC。 */
+  function installBus () {
+    var rpc = NW.rpc;
+    if (!rpc || typeof rpc.initChannel !== 'function') return;
+    var ch = rpc.initChannel();
+    if (!ch || typeof ch.postMessage !== 'function' || ch.__nwMirrored) return;
+    var origPost = ch.postMessage.bind(ch);
+    ch.postMessage = function (data) {
+      var result = origPost(data);
+      invoke('bus', 'publish', { data: JSON.stringify(data) }).catch(function () {});
+      return result;
+    };
+    ch.__nwMirrored = true;
   }
 
-  function openFallback (key) {
-    var doc = global.document;
-    if (!doc || !doc.body) return;
-    var id = 'nw-harmony-window';
-    var frame = doc.getElementById(id);
-    if (!frame) {
-      frame = doc.createElement('iframe');
-      frame.id = id;
-      frame.style.cssText = 'position:fixed;right:16px;bottom:16px;width:420px;height:520px;' +
-        'border:1px solid rgba(255,255,255,.14);border-radius:14px;z-index:99999;' +
-        'background:#1c1e24;box-shadow:0 18px 60px rgba(0,0,0,.45)';
-      doc.body.appendChild(frame);
+  /** 原生转发过来的消息，重新喂回 10-rpc.js / 30-host.js 的通道监听器 */
+  function onBusMessage (data) {
+    var rpc = NW.rpc;
+    if (!rpc || typeof rpc.initChannel !== 'function') return;
+    var ch = rpc.initChannel();
+    if (!ch || typeof ch.dispatchEvent !== 'function') return;
+    try {
+      ch.dispatchEvent(new MessageEvent('message', { data: data }));
+    } catch (e) { /* 消息格式异常时忽略 */ }
+  }
+
+  /** 原生广播的窗口存在性变化，所有窗口据此保持一致 */
+  function onWindowState (key, exists) {
+    if (exists) {
+      windowStates[key] = true;
+    } else {
+      delete windowStates[key];
+      delete handles[key];
     }
-    frame.src = '../' + key + '/index.html';
+  }
+
+  function onWindowClosed (key) {
+    onWindowState(key, false);
   }
 
   /* ------------------------------ 对外接口 ------------------------------ */
@@ -326,6 +479,10 @@
     invoke: invoke,
     profile: function () { return currentProfile; },
     taskStats: function () { return cachedTaskStats; },
+    onBusMessage: onBusMessage,
+    onWindowClosed: onWindowClosed,
+    onWindowState: onWindowState,
+    openWindow: function (key, options) { return nativeWindowApi.open(options || key); },
     // VM 侧调用：把角色统计推给 ArkTS task-manager 面板
     reportSpriteStats: function (sprites) {
       cachedTaskStats.sprites = sprites || [];
@@ -334,6 +491,8 @@
       }
     }
   };
+
+  installBus();
 
   // 通知 ArkTS：Web 运行时已就绪，可以开始推送设备形态与采样数据
   if (global.document && global.document.readyState !== 'loading') {

@@ -22,6 +22,7 @@ import {
   BRIDGE_ERR_PERMISSION, BRIDGE_ERR_OFFLINE, BRIDGE_CHUNK_LIMIT
 } from '../common/Constants';
 import { PerformanceManager } from '../common/PerformanceManager';
+import { WindowBus } from '../common/WindowBus';
 
 const PREF_STORE: string = 'neowarp_native';
 const PREF_RECENT: string = 'recent_projects';
@@ -35,22 +36,25 @@ interface ReadAssetArgs { name: string; }
 interface WriteAssetArgs { name: string; data: string; }
 interface HashArgs { data: string; }
 interface ThemeSetArgs { theme: string; }
-interface WindowOpenArgs { key: string; title: string; }
+interface WindowOpenArgs { key: string; title: string; url: string; width: number; height: number; }
 interface WindowKeyArgs { key: string; }
-interface WindowTitleArgs { title: string; }
+interface WindowTitleArgs { key: string; title: string; }
 interface FullscreenArgs { enabled: boolean; }
 interface PerfProfileArgs { tier: number; }
 interface VisibilityArgs { visible: boolean; }
 interface SpriteStatsArgs { sprites: SpriteStat[]; }
 interface PermissionArgs { name: string; }
+interface BusPublishArgs { data: string; }
 
 /** 由 UI 层实现的窗口/设备宿主能力，避免服务层反向依赖 ArkUI 组件 */
 export interface WindowHost {
-  openWindow: (key: string, title: string) => void;
+  openWindow: (key: string, title: string, url: string, width: number, height: number) => void;
   closeWindow: (key: string) => void;
   focusWindow: (key: string) => void;
-  setTitle: (title: string) => void;
+  setTitle: (key: string, title: string) => void;
   setFullscreen: (enabled: boolean) => void;
+  hasWindow: (key: string) => boolean;
+  publish: (data: string) => void;
   requestPermissions: (names: string[]) => Promise<boolean>;
   currentSnapshot: () => DeviceSnapshot;
 }
@@ -102,6 +106,8 @@ export class NativeServices {
       case 'window.focus': return this.windowFocus(this.parse<WindowKeyArgs>(argsJson));
       case 'window.setTitle': return this.windowSetTitle(this.parse<WindowTitleArgs>(argsJson));
       case 'window.fullscreen': return this.windowFullscreen(this.parse<FullscreenArgs>(argsJson));
+      case 'window.has': return this.windowHas(this.parse<WindowKeyArgs>(argsJson));
+      case 'bus.publish': return this.busPublish(this.parse<BusPublishArgs>(argsJson));
       case 'media.enumerateDevices': return this.enumerateMediaDevices();
       case 'media.requestPermission': return await this.requestMediaPermission(this.parse<PermissionArgs>(argsJson));
       case 'perf.setProfile': return this.setProfile(this.parse<PerfProfileArgs>(argsJson));
@@ -309,7 +315,9 @@ export class NativeServices {
 
   private windowOpen(args: WindowOpenArgs): BridgeEnvelope {
     if (!this.host) return errEnvelope(BRIDGE_ERR_IO, 'window host not attached');
-    this.host.openWindow(args.key, args.title);
+    const width: number = args.width > 0 ? args.width : 980;
+    const height: number = args.height > 0 ? args.height : 700;
+    this.host.openWindow(args.key, args.title, args.url, width, height);
     return okEnvelope('{"opened":true}');
   }
 
@@ -327,7 +335,7 @@ export class NativeServices {
 
   private windowSetTitle(args: WindowTitleArgs): BridgeEnvelope {
     if (!this.host) return errEnvelope(BRIDGE_ERR_IO, 'window host not attached');
-    this.host.setTitle(args.title);
+    this.host.setTitle(args.key, args.title);
     return okEnvelope('{"saved":true}');
   }
 
@@ -335,6 +343,21 @@ export class NativeServices {
     if (!this.host) return errEnvelope(BRIDGE_ERR_IO, 'window host not attached');
     this.host.setFullscreen(args.enabled);
     return okEnvelope('{"saved":true}');
+  }
+
+  private windowHas(args: WindowKeyArgs): BridgeEnvelope {
+    const exists: boolean = this.host !== null && this.host.hasWindow(args.key);
+    return okEnvelope(exists ? '{"exists":true}' : '{"exists":false}');
+  }
+
+  /** Web 侧 BroadcastChannel 消息的原生镜像：转发到所有真实窗口 */
+  private busPublish(args: BusPublishArgs): BridgeEnvelope {
+    const script: string =
+      'if (window.NWHarmony && window.NWHarmony.onBusMessage) {' +
+      'window.NWHarmony.onBusMessage(' + args.data + ');' +
+      '}';
+    WindowBus.get().broadcast(script);
+    return okEnvelope('{"published":true}');
   }
 
   private enumerateMediaDevices(): BridgeEnvelope {

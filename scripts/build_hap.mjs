@@ -27,7 +27,7 @@ const RES = path.join(ENTRY_MAIN, 'resources');
 const RAWF = path.join(RES, 'rawfile');
 const DIST = path.join(PROJECT, 'dist');
 // 早期开发态归档工具：输出独立文件名，避免覆盖 hvigor 真实编译 + 签名的交付产物。
-const HAP = path.join(DIST, 'NeoWarp-2.3.0-devarchive.hap');
+const HAP = path.join(DIST, 'NeoWarp-0.0.1-devarchive.hap');
 const VERIFY_ONLY = process.argv.includes('--verify');
 
 function sha256 (file) {
@@ -77,7 +77,7 @@ function build () {
       app: {
         bundleName: 'org.neowarp.harmony',
         vendor: 'NeoWarp',
-        version: {name: '2.3.0', code: 2030000},
+        version: {name: '0.0.1', code: 1},
         minAPIVersion: 26,
         targetAPIVersion: 26
       },
@@ -123,7 +123,7 @@ function build () {
   const perms = (moduleJson.module.requestPermissions || []).map(p => p.name);
   const buildInfo = {
     product: 'NeoWarp HarmonyOS 7 (API 26)',
-    version: '2.3.0',
+    version: '0.0.1',
     bundleName: 'org.neowarp.harmony',
     generatedAt: new Date().toISOString(),
     generatedBy: 'scripts/build_hap.mjs (dev archive)',

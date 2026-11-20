@@ -15,6 +15,7 @@ import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { NativeServices } from './NativeServices';
 import { PerformanceManager } from '../common/PerformanceManager';
+import { WindowBus } from '../common/WindowBus';
 import {
   DeviceSnapshot, TaskStats, SpriteStat,
   ALLOWED_BRIDGE_METHODS, OFFLINE_CSP, RAWFILE_ROOT,
@@ -88,7 +89,14 @@ export class HarmonyBridge {
   }
 
   notifyVisibility(visible: boolean): void {
-    this.emit('native', 'visibility', JSON.stringify({ visible: visible }));
+    // 编辑器可能位于任一子窗口，前后台挂起事件需要广播到所有 ArkWeb
+    const payload: string = JSON.stringify({ visible: visible });
+    // 直接调用 rpc.emit，避免经 NWHost.emit 包装造成二次广播放大
+    const script: string =
+      'if (window.NW && window.NW.rpc && window.NW.rpc.emit) {' +
+      'window.NW.rpc.emit("native", "visibility", ' + payload + ');' +
+      '}';
+    WindowBus.get().broadcast(script);
   }
 
   /** task-manager 数据推送：采样在 ArkTS/TaskPool，Web 层只负责绘制 */

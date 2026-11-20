@@ -1,6 +1,6 @@
 {
-  "version": "2.3.0",
-  "generatedAt": 1794674827883,
+  "version": "0.0.1",
+  "generatedAt": 1795176068771,
   "fileCount": 1453,
   "files": {
     "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
@@ -33,7 +33,7 @@
     "art/icon.png": "c8a3726f8489fd5d46d59d9b7221763e4aef9555b3e94c191ad5e5f135a83ddb",
     "art/icon.svg": "c347b8dc19ccda281c245eae7d2dc8a7465fe30e15a976ec1a114dfbd896038c",
     "art/rich-presence-icon.png": "6cc43ce533fa9e60e275d1de71aeabbcd18aa662c322ba814ec4fc47aed10e34",
-    "assets/harmony-bridge.js": "025e07435794ab7669634a9b0a358f6de1c4b76bcb14f0065d1f00593d5e24c0",
+    "assets/harmony-bridge.js": "7338fae9bbd691de04482581d4f650b2ee311af06633ca899f64c7b62b190224",
     "assets/monaco/vs/abap-D-t0cyap.js": "80e43a53268d6a4c632ff9985bee1e7d0c6910cceadde464aa234bf36d0a6737",
     "assets/monaco/vs/apex-CcIm7xu6.js": "f65a5a9a27d2b6c2a2ec55a670486073ca76203fc63d5a3ef91a889fe3c6bda8",
     "assets/monaco/vs/assets/css.worker-URu8fCFR.js": "7d3cfe5eb15cbfcb74cd50d29ebd9cf02dbf85078f076e6bab5fb8bdf6866ff1",

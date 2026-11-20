@@ -19,7 +19,7 @@ const STORE_PWD = '123456';
 const DIR = `${PROJ}/signing`;
 const DIST = `${PROJ}/dist`;
 const UNSIGNED = `${PROJ}/entry/build/default/outputs/default/entry-default-unsigned.hap`;
-const SIGNED = `${DIST}/NeoWarp-2.3.0-harmony.hap`;
+const SIGNED = `${DIST}/NeoWarp-0.0.1-harmony.hap`;
 
 fs.mkdirSync(DIR, { recursive: true });
 fs.mkdirSync(DIST, { recursive: true });
@@ -56,8 +56,8 @@ console.log(`应用证书链张数: ${(fs.readFileSync(APP_CHAIN, 'utf8').match(
 // 2. 构造 Provision Profile：bundleName 对齐工程，有效期为当前时间起 10 年
 const template = JSON.parse(fs.readFileSync(`${LIB}/UnsgnedReleasedProfileTemplate.json`, 'utf8'));
 const now = Math.floor(Date.now() / 1000);
-template['version-name'] = '2.3.0';
-template['version-code'] = 2030000;
+template['version-name'] = '0.0.1';
+template['version-code'] = 1;
 template.uuid = 'a3f1c2d4-7b8e-4c90-9a12-6e5f4d3c2b10';
 template.validity = { 'not-before': now - 86400, 'not-after': now + 10 * 365 * 86400 };
 template['bundle-info']['bundle-name'] = 'org.neowarp.harmony';

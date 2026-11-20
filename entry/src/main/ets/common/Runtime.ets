@@ -31,8 +31,6 @@ export class Runtime {
   };
   pendingOpenUri: string = '';
   webReady: boolean = false;
-  /** EntryAbility 在折叠/尺寸变化时触发，Index 用它重排 ArkUI 布局（不重建 Web） */
-  deviceChangeHandler: (() => void) | null = null;
 
   private constructor() {}
 

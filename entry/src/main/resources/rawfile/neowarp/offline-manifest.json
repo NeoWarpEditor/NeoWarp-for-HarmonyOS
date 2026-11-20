@@ -1,14 +1,14 @@
 {
-  "version": "2.3.0",
+  "version": "0.0.1",
   "mode": "full",
   "source": "/workspace/NeoWarp",
   "output": "/workspace/NeoWarpHarmony/entry/src/main/resources/rawfile/neowarp",
-  "builtAt": "2026-11-14T16:47:07.891Z",
+  "builtAt": "2026-11-20T12:01:08.779Z",
   "copiedFiles": 1.4001672573472284e+23,
   "injectedHtmlFiles": 19,
   "brotliDecompressed": 292,
   "fileCount": 1453,
-  "totalBytes": 124681718,
+  "totalBytes": 124687354,
   "totalMB": 118.91,
   "offlineGuarantees": [
     "no ohos.permission.INTERNET in module.json5",

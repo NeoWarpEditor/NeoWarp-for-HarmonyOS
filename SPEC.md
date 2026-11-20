@@ -1,6 +1,9 @@
 # NeoWarp HarmonyOS 7 (API 26) 完整移植适配技术规格
 
-> 版本：v1.0 · 2026-11-14 · 目标产物：`NeoWarp-2.3.0-harmony.hap`
+> **修订 v2（界面一致性要求）**：主窗口不再包含任何原生外围 UI（标题栏 / 侧栏 / 任务面板 / 骨架屏 / 原生快捷键层），界面 100% 由离线 Web 站点渲染，与 Windows 版逐字节一致；桌面版 `src-main/windows/*` 的每个独立 `BrowserWindow` 一律改由 `windowStage.createSubWindow()` 的 **OS 级真实子窗口**承载（系统标题栏、可拖动、可缩放、任务栏可见），彻底移除网页版 iframe 浮层与 Dock。各子窗口是独立 ArkWeb，跨窗口 RPC 由 `WindowBus` 在原生层镜像 BroadcastChannel，保证与桌面主进程 IPC 等价。
+
+
+> 版本：v1.0 · 2026-11-14 · 目标产物：`NeoWarp-0.0.1-harmony.hap`
 > 源工程：`/workspace/NeoWarp` @ `ca37a40`（NeoWarp 2.3.0，GPL-3.0，TurboWarp Desktop 衍生）
 
 ---
@@ -72,10 +75,10 @@ Electron 41 + webpack 4 的多进程应用，三块组成：
 | `os.cpus/totalmem/freemem` | `windows/task-manager.js:69-91` | `@ohos.resourceschedule` / `hidebug` + `systemParameter` |
 | `crypto` 加密项目 | `windows/editor.js:5` | `@ohos.security.cryptoFramework` |
 | `zlib` brotli 解压资产 | `protocols.js` | ArkTS 侧预解压 + `onInterceptRequest` 直接应答 |
-| `BrowserWindow` ×30 | `windows/*` | ArkWeb 页内浮层 + 鸿蒙多窗口/分屏（PC） |
+| `BrowserWindow` ×30 | `windows/*` | **OS 级真实子窗口**（`createSubWindow` + 系统装饰），窗口内仍是同一份离线页面 |
 | `protocol.handle` / CSP | `protocols.js:211-243,694-709` | ArkWeb `onInterceptRequest` + `WebOptions` CSP |
 | `nativeTheme` / 深浅色 | `effective-theme.js` | `@ohos.window` + `AppStorage` + 资源限定词 `dark` |
-| `Menu` / `before-input-event` 快捷键 | `menu-bar.js`、`abstract.js:232-301` | ArkUI 菜单 + `onKeyEvent` + PC 快捷键映射 |
+| `Menu` / `before-input-event` 快捷键 | `menu-bar.js`、`abstract.js:232-301` | 由 Web 页面自身处理键盘事件；不新增原生菜单/快捷键层 |
 | `Notification` / `clipboard` / `shell` | 多处 | `@ohos.notificationManager` / `pasteboard` / `Want` |
 | `child_process.execFile` | `file-associations.js:56` | 移除（Windows 注册表逻辑） |
 | `sharp` / scaffolding（原生模块） | `package.json:53` 等 | 构建期用；运行时以 ArkTS 图像处理/内置站点替代 |
@@ -90,7 +93,7 @@ Electron 41 + webpack 4 的多进程应用，三块组成：
 │                                                              │
 │  ┌──────────────────── ArkTS 原生层 ────────────────────────┐ │
 │  │ EntryAbility（生命周期/窗口/折叠监听/性能调度）          │ │
-│  │ Index.ets（ArkUI 壳：标题栏·侧栏·多窗口·断点布局）       │ │
+│  │ Index.ets（纯 ArkWeb 全屏容器，无任何 ArkUI 装饰）                 │ │
 │  │ HarmonyBridge（javaScriptProxy ⇄ NW.host 服务总线）       │ │
 │  │ NativeServices：fs / system / theme / window / media /   │ │
 │  │                 crypto / perf / package / distributed    │ │
@@ -119,14 +122,14 @@ Electron 41 + webpack 4 的多进程应用，三块组成：
 |---|---|---|
 | 主编辑器（scratch-gui、编译器、积木、舞台、造型/声音编辑） | ArkWeb `gui/index.html` | WebGL + shims/editor + fs 桥 |
 | 主页 Home | ArkWeb `index.html` | recent-projects → ArkTS 存储 |
-| 桌面设置、Addon 设置、主题/深色模式 | ArkWeb 浮层窗口 | `NW.host('desktop')` + ArkTS 主题服务 |
+| 桌面设置、Addon 设置、主题/深色模式 | **OS 级真实子窗口** | `NW.host('desktop')` + ArkTS 主题服务 |
 | 扩展编辑器（Monaco） | ArkWeb `extension-editor/` | 本地 `vs/` 全量内置 |
 | AI 助手 / SOLO / SOLO Stage | ArkWeb 对应页 | 离线保留本地能力，禁用在线推理 |
-| 项目分析 / 图片编辑器 / 迁移 / 待办 / 关于 / 联系 / 隐私 / 安全提示 / 引导 | ArkWeb 浮层窗口 | 页内窗口管理器 |
+| 项目分析 / 图片编辑器 / 迁移 / 待办 / 关于 / 联系 / 隐私 / 安全提示 / 引导 | **OS 级真实子窗口** | 页内窗口管理器 |
 | 协作 / 手机预览 / 远程舞台 | ArkWeb 页面 | §7.6 近场通道 |
 | Packager（HTML/ZIP/EXE 打包） | ArkWeb standalone.html | 内置 `dist-library-files` |
 | **task-manager**（CPU/RAM/角色表/折线图） | ArkWeb 页面 + **ArkTS 系统信息采集** | `NativeServices.system.getStats`，见 §8 |
-| 分离舞台 / 全屏 / 多窗口 | ArkWeb 浮层 + 鸿蒙分屏/自由窗口（PC） | `DeviceProfile` |
+| 分离舞台 / 全屏 / 多窗口 | **OS 级真实子窗口**（PC 支持多窗口/分屏） | `DeviceProfile` |
 | 文件关联 `.sb3/.sb2/.sb/.np1/.npnp/.viewsb3/.js` | `module.json5` `skills`/`uris` + Want 拉起 | ArkTS 文件桥 |
 | 素材库 / 扩展画廊 / 字体 | rawfile 内置 + 拦截应答 | `onInterceptRequest` |
 
@@ -156,9 +159,9 @@ Electron 41 + webpack 4 的多进程应用，三块组成：
 | 阔折叠（展） | EXPANDED，宽高比接近方形 | 双栏：左积木/右舞台，折痕区避让 |
 | 三折叠（单屏态） | 单屏宽度 | 单栏，等同手机布局 |
 | 三折叠（双/三屏态） | EXPANDED + 多折痕 / 超宽 vp | 三栏：素材/积木/舞台，折痕区各留 24vp 安全区 |
-| 鸿蒙 PC | xl + 键鼠 + 自由窗口 | 桌面级菜单栏、多窗口、快捷键、悬浮面板 |
+| 鸿蒙 PC | xl + 键鼠 + 自由窗口 | 系统窗口装饰 + 多个真实子窗口，无自绘菜单栏/面板 |
 
-`display.on('foldStatusChange')` / `window.on('windowSizeChange')` 监听，**切换折叠态不重建 ArkWeb、不丢失编辑状态**，仅重排 ArkUI 布局并通知 Web 层 `NW.host.emit('device','profile', …)`。
+`display.on('foldStatusChange')` / `window.on('windowSizeChange')` 监听，**切换折叠态不重建 ArkWeb、不丢失编辑状态**，只更新原生性能调度快照，界面由 Web 自行响应式布局，不注入任何原生 UI。
 
 ### 6.2 交互适配
 
@@ -196,7 +199,7 @@ shims 通过 `NW.rpc.call(native.*)` 调用，协议与 `web/src/core/10-rpc.js`
 | `native.crypto` | `encrypt/decrypt/hash` | `cryptoFramework` |
 | `native.system` | `getStats/getMemoryInfo/getCpuInfo` | `hidebug` / `systemParameter` / 进程采样 |
 | `native.theme` | `get/set/onChange` | `ApplicationContext` 颜色模式 + `AppStorage` |
-| `native.window` | `open/close/focus/setTitle/fullscreen/split` | `@ohos.window` + ArkUI 浮层路由 |
+| `native.window` | `open/close/focus/setTitle/fullscreen/split` | `@ohos.window` + `SubWindowManager` 真实子窗口 |
 | `native.media` | `enumerateDevices/requestPermission` | `camera` / `microphone` 权限按需申请 |
 | `native.perf` | `setProfile/getMetrics/notifyVisibility` | `PerformanceManager` |
 | `native.package` | `packageHtml/packageZip` | 调用内置 standalone 打包器，产物写沙箱 |
@@ -231,7 +234,7 @@ shims 通过 `NW.rpc.call(native.*)` 调用，协议与 `web/src/core/10-rpc.js`
 | 调度 | `PerformanceManager` 依据形态分档（PC 高性能 / 平板均衡 / 折叠合盖省电）；`onBackground` 挂起 VM 循环与轮询；`onForeground` 恢复 | 后台 CPU ≈ 0 |
 | task-manager | 采样在 ArkTS 侧 `TaskPool` 完成（不在 Web 层轮询 `os`），1.5s 推送一次；角色统计由 VM 事件总线汇总；折线图 Canvas 按 DPR 与可见性节流重绘 | 采样开销 < 1% CPU |
 | 内存 | 大项目分块解析；素材按需解压 + LRU（上限按设备内存档位动态调整）；离屏 Web 浮层及时释放；`onMemoryLevel` 回调主动降缓存 | 峰值受控、无 OOM |
-| 折叠切换 | 不重建 Web 组件，仅 ArkUI 重排；切换期间暂停渲染 1 帧后恢复，避免尺寸抖动导致 WebGL 反复重建 | 状态不丢、无闪白 |
+| 折叠切换 | 不重建 Web 组件，界面由 Web 自行重排；切换期间暂停渲染 1 帧后恢复，避免尺寸抖动导致 WebGL 反复重建 | 状态不丢、无闪白 |
 | I/O | 项目保存用临时文件 + 原子 rename；写操作合并；素材读取走拦截缓存 | 无写一半损坏 |
 
 ---
@@ -250,14 +253,14 @@ NeoWarpHarmony/
 │   │   ├── pages/Index.ets
 │   │   ├── bridge/{HarmonyBridge,NativeServices}.ets
 │   │   ├── common/{Constants,DeviceProfile,PerformanceManager}.ets
-│   │   └── components/{TitleBar,SidePanel,FoldSafeLayout,TaskManagerPanel}.ets
+│   │   └── window/SubWindowManager.ets · common/WindowBus.ets       │
 │   ├── src/main/resources/rawfile/neowarp/**   离线 dist-web 全量
 │   └── build-profile.json5 / hvigorfile.ts / oh-package.json5
 ├── build-profile.json5 / hvigorfile.ts / oh-package.json5 / hvigor-config.json5
 ├── scripts/prepare_offline.mjs       离线站点组装（rawfile）
 ├── scripts/sign_hap.mjs              SDK 本地 CA 签名 + verify-app
 ├── scripts/build_hap.mjs             早期归档工具（输出 *-devarchive.hap，勿用于交付）
-└── dist/NeoWarp-2.3.0-harmony.hap   目标产物（真实编译 + 签名）
+└── dist/NeoWarp-0.0.1-harmony.hap   目标产物（真实编译 + 签名）
 ```
 
 `deviceTypes` 覆盖 `["phone","tablet","2in1","tv"?]`——PC 用 `2in1`，三折叠/阔折叠归入 `phone`/`tablet` 并由运行时形态识别细分；**不声明 `tv`/`wearable`**。

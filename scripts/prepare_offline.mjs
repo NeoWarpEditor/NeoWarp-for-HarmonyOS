@@ -34,7 +34,7 @@ function arg (name, fallback) {
 
 const SOURCE = path.resolve(arg('source', '/workspace/NeoWarp'));
 const OUT = path.resolve(arg('out', path.join(PROJECT, 'entry/src/main/resources/rawfile/neowarp')));
-const VERSION = arg('version', '2.3.0');
+const VERSION = arg('version', '0.0.1');
 
 const CSP = "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; " +
   "style-src 'self' 'unsafe-inline' data:; img-src 'self' data: blob:; font-src 'self' data:; " +

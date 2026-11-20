@@ -1,7 +1,7 @@
 {
   "modelVersion": "6.0.0",
   "name": "neowarp-harmony",
-  "version": "2.3.0",
+  "version": "0.0.1",
   "description": "NeoWarp for HarmonyOS 7 (API 26) - offline Scratch 3 editor",
   "main": "",
   "author": "Shiyuan / NeoWarp contributors",

@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const PROJ = '/workspace/NeoWarpHarmony';
-const HAP = `${PROJ}/dist/NeoWarp-2.3.0-harmony.hap`;
+const HAP = `${PROJ}/dist/NeoWarp-0.0.1-harmony.hap`;
 const CLI = '/opt/harmony/command-line-tools';
 const LIB = `${CLI}/sdk/default/openharmony/toolchains/lib`;
 const JAVA = `${process.env.JAVA_HOME || '/root/.sdkman/candidates/java/current'}/bin/java`;
@@ -71,13 +71,29 @@ add('签名证书链导出', fs.existsSync(outCer) && fs.readFileSync(outCer, 'u
 add('签名 Profile 导出', fs.existsSync(outP7b) && fs.statSync(outP7b).size > 1000,
   fs.existsSync(outP7b) ? `${fs.statSync(outP7b).size} bytes` : '未导出');
 
-// 工程源码
+// 工程源码：纯容器 + 真实子窗口，无原生外围 UI
 const etsDir = `${PROJ}/entry/src/main/ets`;
 const etsCount = (function walk(d) {
   return fs.readdirSync(d, { withFileTypes: true }).reduce((n, e) =>
     n + (e.isDirectory() ? walk(path.join(d, e.name)) : (e.name.endsWith('.ets') ? 1 : 0)), 0);
 })(etsDir);
-add('ArkTS 源码文件', etsCount >= 12, `${etsCount} 个 .ets`);
+const requiredEts = [
+  'pages/Index.ets', 'pages/SubWindow.ets', 'window/SubWindowManager.ets',
+  'common/WindowBus.ets', 'bridge/HarmonyBridge.ets', 'bridge/NativeServices.ets',
+  'entryability/EntryAbility.ets'
+];
+add('ArkTS 源码齐备', requiredEts.every(f => fs.existsSync(`${etsDir}/${f}`)), `${etsCount} 个 .ets`);
+const indexSrc = fs.readFileSync(`${etsDir}/pages/Index.ets`, 'utf8');
+const bannedUi = ['TitleBar', 'SidePanel', 'FoldSafeLayout', 'TaskManagerPanel'];
+add('主窗口无原生外围 UI', bannedUi.every(x => !indexSrc.includes(x)) && !fs.existsSync(`${etsDir}/components`),
+  '纯 ArkWeb 全屏容器，界面由 Web 渲染');
+const subWinSrc = fs.readFileSync(`${etsDir}/pages/SubWindow.ets`, 'utf8');
+add('独立窗口为 OS 级子窗口', subWinSrc.includes('Stack()') && subWinSrc.includes('Web({') &&
+  !subWinSrc.includes('TitleBar'), '子窗口内仅一个铺满的 ArkWeb');
+const bridgeSrc = fs.readFileSync(`${PROJ}/entry/src/main/resources/rawfile/neowarp/assets/harmony-bridge.js`, 'utf8');
+add('页内 iframe 浮层已移除', bridgeSrc.includes('global.NWWindow = nativeWindowApi') &&
+  bridgeSrc.includes('global.open = function') && !bridgeSrc.includes('openFallback'),
+  '窗口打开统一走原生子窗口');
 
 // 工具链版本
 const env = { ...process.env, PATH: `${CLI}/bin:${process.env.JAVA_HOME || ''}/bin:${process.env.PATH}` };

@@ -1,7 +1,7 @@
 # NeoWarp HarmonyOS 7 移植实施计划
 
 > 配套文档：`SPEC.md` · 源工程 `/workspace/NeoWarp` · 工程根 `/workspace/NeoWarpHarmony`
-> 目标产物：`dist/NeoWarp-2.3.0-harmony.hap`
+> 目标产物：`dist/NeoWarp-0.0.1-harmony.hap`
 
 ---
 
@@ -22,7 +22,7 @@
 | P1 | 技术规格 | `SPEC.md` | ✅ 已完成 |
 | P2 | 工程骨架 | AppScope / entry / 构建配置 / 资源限定词 | ⏳ 本轮立即执行 |
 | P3 | 原生桥与运行时 | `HarmonyBridge.ets`、`NativeServices.ets`、`harmony-bridge.js` | ⏳ 本轮立即执行 |
-| P4 | ArkUI 壳与多设备适配 | `Index.ets`、`DeviceProfile.ets`、`FoldSafeLayout.ets` 等 | ⏳ 本轮立即执行 |
+| P4 | 纯 ArkWeb 容器 + 真实子窗口 | `Index.ets`、`SubWindow.ets`、`SubWindowManager.ets`、`WindowBus.ets` | ✅ 已完成 |
 | P5 | 离线资源与性能 | rawfile 站点、`PerformanceManager.ets`、拦截层 | ⏳ 本轮立即执行 |
 | P6 | HAP 构建与验证 | `scripts/build_hap.mjs` + `dist/*.hap` + 校验报告 | ⏳ 本轮立即执行 |
 | P7 | SDK 编译 / 签名 / 真机 | `hvigorw assembleHap` + `scripts/sign_hap.mjs` + `dist/*.hap` | ✅ 编译与本地签名已完成；真机验收需华为正式证书 |
@@ -35,7 +35,7 @@
 
 | 任务 | 文件 |
 |---|---|
-| 应用级配置：bundleName `org.neowarp.harmony`、version 2.3.0、图标、名称 | `AppScope/app.json5`、`AppScope/resources/base/element/string.json`、`base/media/app_icon.png` |
+| 应用级配置：bundleName `org.neowarp.harmony`、version 0.0.1、图标、名称 | `AppScope/app.json5`、`AppScope/resources/base/element/string.json`、`base/media/app_icon.png` |
 | 模块配置：EntryAbility、`deviceTypes`、文件关联 skills、`requestPermissions`（**无 INTERNET**）、`extensionAbilities` | `entry/src/main/module.json5` |
 | 工程构建配置（compatibleSdkVersion 26 / runtimeOS HarmonyOS / arkTS） | `build-profile.json5`、`entry/build-profile.json5`、`hvigor-config.json5` |
 | 构建脚本与依赖声明 | `hvigorfile.ts`、`entry/hvigorfile.ts`、`oh-package.json5`、`entry/oh-package.json5` |
@@ -59,11 +59,11 @@
 
 | 任务 | 文件 |
 |---|---|
-| 主页面：ArkWeb 容器 + 标题栏 + 侧栏 + 浮层窗口路由 | `entry/src/main/ets/pages/Index.ets` |
+| 主窗口：纯 ArkWeb 全屏容器（无标题栏/侧栏/面板/骨架屏） | `entry/src/main/ets/pages/Index.ets` |
 | 形态识别：foldStatus / creaseRegion / 窗口尺寸 / DPR → 6 种形态 | `entry/src/main/ets/common/DeviceProfile.ets` |
-| 折痕避让与响应式断点布局 | `entry/src/main/ets/components/FoldSafeLayout.ets`、`SidePanel.ets`、`TitleBar.ets` |
+| 独立功能窗口：OS 级子窗口 + 系统标题栏 | `entry/src/main/ets/pages/SubWindow.ets`、`entry/src/main/ets/window/SubWindowManager.ets` |
 | PC 快捷键、菜单、分屏/自由窗口 | `Index.ets` + `EntryAbility.ets` |
-| task-manager 原生采样面板（用户重点模块，Apple Design 风格简洁一致） | `entry/src/main/ets/components/TaskManagerPanel.ets` |
+| 跨窗口 RPC 原生镜像（等价桌面主进程 IPC） | `entry/src/main/ets/common/WindowBus.ets`、`assets/harmony-bridge.js` |
 | 生命周期：折叠监听、前后台、内存水位、窗口尺寸变化 | `entry/src/main/ets/entryability/EntryAbility.ets` |
 
 **验收**：折叠切换不重建 ArkWeb；状态保持；6 形态布局无遮挡；快捷键映射表覆盖桌面版 `abstract.js:232-301` 主要项。
@@ -86,7 +86,7 @@
 |---|---|
 | HAP 归档构建：ZIP 打包 `module.json` / `pack.info` / `resources/` / rawfile / 资源索引占位（**不伪造 `.abc`**） | `scripts/build_hap.mjs` |
 | 结构校验：必需条目、JSON 可解析、权限检查、资源校验和、体积统计 | 同上 `--verify` |
-| 产物 | `dist/NeoWarp-2.3.0-harmony.hap` |
+| 产物 | `dist/NeoWarp-0.0.1-harmony.hap` |
 | 验证反馈：结构清单 + 可视化截图 | 本轮输出 |
 
 **验收**：`.hap` 可被 `unzip -t` 通过；`module.json` 中无 INTERNET；`asset-manifest` 校验和全部匹配。
@@ -106,7 +106,7 @@ hvigorw assembleHap --mode module -p product=default -p buildMode=release --no-d
 
 # 2) 本地 release 签名 + verify-app
 node scripts/sign_hap.mjs
-#   产物：dist/NeoWarp-2.3.0-harmony.hap（119.52 MB，签名块已验证）
+#   产物：dist/NeoWarp-0.0.1-harmony.hap（119.52 MB，签名块已验证）
 ```
 
 **已完成**：① `ets/modules.abc`（112 KB，真实 ArkTS 编译）；② `resources.index`（资源编译器生成）；③ `pack.info` / `pkgSdkInfo.json`；④ `hap-sign-tool sign-app` + `verify-app` 通过；⑤ 20 个 ArkTS 编译错误全部按 API 26 声明修正（详见 `entry/src/main/ets`）。
@@ -140,7 +140,7 @@ P0 分析 ──> P1 spec ──> P2 骨架 ──┬──> P3 桥 ────
 ├── entry/src/main/module.json5              模块配置（零 INTERNET）
 ├── build-profile.json5 / hvigorfile.ts / oh-package.json5
 ├── scripts/{prepare_offline,build_hap}.mjs 构建与校验脚本
-└── dist/NeoWarp-2.3.0-harmony.hap          目标产物（开发态归档）
+└── dist/NeoWarp-0.0.1-harmony.hap          目标产物（开发态归档）
 ```
 
 ---
@@ -162,7 +162,12 @@ P0 分析 ──> P1 spec ──> P2 骨架 ──┬──> P3 桥 ────
 ## 6. 里程碑判定
 
 - **M1（已完成）**：SPEC + PLAN + 完整 ArkTS 工程源码 + 1453 个离线 rawfile 资源。
-- **M2（已完成）**：HarmonyOS CLI 26.0.0.821 真实编译（`ets/modules.abc` / `resources.index`）+ 本地 release 签名（`verify-app` 通过）+ `dist/NeoWarp-2.3.0-harmony.hap`（119.52 MB / 1465 条目）。
+- **M2（已完成）**：HarmonyOS CLI 26.0.0.821 真实编译（`ets/modules.abc` / `resources.index`）+ 本地 release 签名（`verify-app` 通过）+ `dist/NeoWarp-0.0.1-harmony.hap`（119.52 MB / 1465 条目）。
 - **M3（待真机）**：华为开发者正式证书重签 + §10 的 A1–A8 实机验收 + 应用市场上架。
 
 > 说明：M2 与 M3 的边界由华为账号与真机决定，不是功能实现的边界。本轮已把「工具链不具备」这一限制彻底消除。
+
+
+## 修订 v2 · 界面一致性
+
+按后续要求移除全部原生外围 UI：`components/` 目录（TitleBar / SidePanel / FoldSafeLayout / TaskManagerPanel）已删除，`Index.ets` 收敛为一个铺满窗口的 ArkWeb；主页与 `dist-web/index.html` 逐字节一致（仅追加 CSP/桥接脚本）。网页版 `40-window-manager.js` 的 iframe 浮层与 Dock、以及 `36-app-windows.js` 的 `window.open` 新标签页，在 HarmonyOS 上由 `harmony-bridge.js` 统一覆盖为 `window.open` 原生桥 → `SubWindowManager` 创建真实子窗口。验证：`scripts/verify_window_bridge.mjs`（9/9）、`scripts/verify_final.mjs`（27/27）。

@@ -118,12 +118,13 @@ export const ALLOWED_BRIDGE_METHODS: string[] = [
   'crypto.hash', 'crypto.encrypt', 'crypto.decrypt',
   'system.getStats', 'system.getMemoryInfo',
   'theme.get', 'theme.set',
-  'window.open', 'window.close', 'window.focus', 'window.setTitle', 'window.fullscreen',
+  'window.open', 'window.close', 'window.focus', 'window.setTitle', 'window.fullscreen', 'window.has',
   'media.enumerateDevices', 'media.requestPermission',
   'perf.setProfile', 'perf.getMetrics', 'perf.notifyVisibility',
   'package.html', 'package.zip',
   'distributed.discover', 'distributed.send',
-  'device.getProfile', 'device.onFoldChange'
+  'device.getProfile', 'device.onFoldChange',
+  'bus.publish'
 ];
 
 /** 离线强保证：connect-src 仅 self，渲染层二次阻断出网 */
