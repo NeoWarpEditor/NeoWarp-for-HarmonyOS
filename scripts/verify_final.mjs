@@ -53,7 +53,7 @@ try { mod = JSON.parse(sh('unzip', ['-p', HAP, 'module.json'])); } catch (_e) { 
 add('module.json 可解析', mod !== null, mod ? `abilities=${(mod.module?.abilities || []).length}` : '解析失败');
 if (mod) {
   const perms = (mod.module?.requestPermissions || []).map(p => p.name);
-  add('零 INTERNET 权限（离线硬保证）', !perms.some(p => /INTERNET/i.test(p)), perms.join(', ') || '无权限申请');
+  add('INTERNET 权限按需申请（局域网协作）', perms.some(p => /INTERNET/i.test(p)), perms.join(', ') || '无权限申请');
   add('deviceTypes 覆盖 PC/平板/折叠', (mod.module?.deviceTypes || []).includes('2in1'),
     (mod.module?.deviceTypes || []).join(', '));
   add('bundle 入口 EntryAbility', mod.module?.mainElement === 'EntryAbility');
@@ -144,6 +144,40 @@ add('本地 AI 窗口不误报断线（issue 3）',
   /if \(!TOKEN && !BOOT\) return;/.test(fs.readFileSync(
     `${PROJ}/entry/src/main/resources/rawfile/neowarp/ai/remote-bridge.js`, 'utf8')),
   '无 token 时不进入远程模式');
+
+// ── 局域网协作（复刻桌面版信令，与 Windows 互通）──
+const RW = `${PROJ}/entry/src/main/resources/rawfile/neowarp`;
+const collabArkts = fs.readFileSync(`${PROJ}/entry/src/main/ets/collab/CollabServer.ets`, 'utf8');
+const collabClientArkts = fs.readFileSync(`${PROJ}/entry/src/main/ets/collab/CollabClient.ets`, 'utf8');
+const collabNativeSrc = fs.readFileSync(`${PROJ}/entry/src/main/ets/bridge/NativeServices.ets`, 'utf8');
+const collabBridgeSrc = fs.readFileSync(`${RW}/assets/collab-lan.js`, 'utf8');
+const collabHTML = fs.readFileSync(`${RW}/collaboration/collaboration.html`, 'utf8');
+add('ArkTS 信令服务器复刻桌面版协议',
+  collabArkts.includes('Sec-WebSocket-Accept') && collabArkts.includes('/discover') &&
+  collabArkts.includes("'project-update'") && collabArkts.includes('TCPSocketServer') &&
+  collabClientArkts.includes('constructTCPSocketInstance'),
+  'RFC6455 + /discover + 客户端 mask');
+add('协作 RPC 已注册并加入白名单',
+  collabNativeSrc.includes("case 'collab.startHost'") && collabNativeSrc.includes("case 'collab.join'") &&
+  collabNativeSrc.includes("case 'collab.pushProject'") &&
+  fs.readFileSync(`${PROJ}/entry/src/main/ets/common/Constants.ets`, 'utf8').includes("'collab.startHost'"),
+  'startHost/join/pushProject');
+add('主页协作入口弹独立窗口（非桌面专属 toast）',
+  fs.readFileSync(`${RW}/assets/shims/home.js`, 'utf8').includes("NW.openRoute('collaboration')") &&
+  !fs.readFileSync(`${RW}/assets/shims/home.js`, 'utf8').includes('多人协作是桌面版专属'),
+  '协作窗口 UI');
+add('协作窗口 + 桥接层 + 路由齐备',
+  collabBridgeSrc.includes('collab.deliverProjectJSON =') &&
+  collabHTML.includes('collab-lan.js') && collabHTML.includes('btn-start') && collabHTML.includes('btn-join') &&
+  fs.readFileSync(`${RW}/assets/nw-core.js`, 'utf8').includes("'collaboration':"),
+  'host/join 两模式');
+add('协作 CSP 放行 WebSocket',
+  fs.readFileSync(`${PROJ}/entry/src/main/ets/common/Constants.ets`, 'utf8').includes("connect-src 'self' data: blob: ws: wss:"),
+  'ws/wss 已放行');
+add('协作窗口资源已打包进 HAP', (() => {
+  try { return sh('unzip', ['-l', HAP]).includes('collaboration.html') && sh('unzip', ['-l', HAP]).includes('collab-lan.js'); }
+  catch (_e) { return false; }
+})(), 'collaboration.html + collab-lan.js');
 
 // 工具链版本
 const env = { ...process.env, PATH: `${CLI}/bin:${process.env.JAVA_HOME || ''}/bin:${process.env.PATH}` };

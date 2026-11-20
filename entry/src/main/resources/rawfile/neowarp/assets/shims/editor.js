@@ -788,6 +788,26 @@
   NW.stageShare = stageShare;
   NW.collab = collab;
 
+  /* -------------------- 局域网协作：项目数据桥（复刻桌面版） --------------------
+     collab-lan.js 已把 collab 的建连/发送方法换成 LAN RPC；这里补上"接收侧"：
+     房主收到 project-request → 让 GUI 导出当前项目（走被覆盖的 deliverProjectJSON 推送）；
+     任一端收到 project-update → 走原有 applyIncomingProject 应用到 VM。 */
+  (function installCollabLanBridge () {
+    if (!NW.rpc || typeof NW.rpc.on !== 'function') return;
+    NW.rpc.on('collab', 'project-request', function (d) {
+      if (collab.mode === 'host') requestProjectFromGui(d && d.username);
+    });
+    NW.rpc.on('collab', 'server-message', function (m) {
+      if (m && m.type === 'project-update' && m.project) {
+        // 复用既有的项目载入逻辑（含素材注册 + GUI 回调）
+        applyIncomingProject(strToBuf(JSON.stringify({ project: m.project, assets: [] })));
+      }
+    });
+    NW.rpc.on('collab', 'project-update', function (d) {
+      if (d && d.project) applyIncomingProject(strToBuf(JSON.stringify({ project: d.project, assets: [] })));
+    });
+  })();
+
   var EditorPreload = {
     /* ---- 基础 ---- */
     isInitiallyFullscreen: () => false,

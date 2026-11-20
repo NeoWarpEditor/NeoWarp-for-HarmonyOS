@@ -149,6 +149,22 @@
       html: function () { return invoke('package', 'html', {}); },
       zip: function () { return invoke('package', 'zip', {}); }
     });
+    // 局域网协作（复刻桌面版内置信令服务器）—— collab-lan.js 经 NW.rpc.call 调用
+    host.register('collab', {
+      startHost: function (o) { return invoke('collab', 'startHost', o); },
+      endHost: function () { return invoke('collab', 'endHost', {}); },
+      getInfo: function () { return invoke('collab', 'getInfo', {}); },
+      getMembers: function () { return invoke('collab', 'getMembers', {}); },
+      getOnlineCount: function () { return invoke('collab', 'getOnlineCount', {}); },
+      pushProject: function (o) { return invoke('collab', 'pushProject', o); },
+      sendChat: function (o) { return invoke('collab', 'sendChat', o); },
+      isRunning: function () { return invoke('collab', 'isRunning', {}); },
+      getLocalIP: function () { return invoke('collab', 'getLocalIP', {}); },
+      discover: function (o) { return invoke('collab', 'discover', o); },
+      join: function (o) { return invoke('collab', 'join', o); },
+      leave: function () { return invoke('collab', 'leave', {}); },
+      sendProject: function (o) { return invoke('collab', 'sendProject', o); }
+    });
 
     // ArkTS 通过 NWHost.emit 推事件；包装一层让顶层页面自身也能收到（BroadcastChannel 不会自发自收）
     var originalEmit = host.emit;

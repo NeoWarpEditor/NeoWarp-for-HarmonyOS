@@ -1,6 +1,6 @@
-// 零 INTERNET 权限：由系统权限层强制保证「离线版本」。
-// 所有网络能力（更新检查/在线 AI/公网信令）在 ArkWeb 运行时内被禁用，
-// 近场协作走系统分布式能力，不经公网。
+// 离线优先 + 按需联网：
+// 本地功能（编辑器/素材/AI 基础能力）完全离线可用；仅局域网协作按需使用网络。
+// 协作复刻桌面版内置信令服务器（ArkTS TCP/WebSocket），与 Windows 等平台互通。
 {
   "module": {
     "name": "entry",
@@ -58,6 +58,22 @@
       }
     ],
     "requestPermissions": [
+      {
+        "name": "ohos.permission.INTERNET",
+        "reason": "$string:perm_internet",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
+        "name": "ohos.permission.GET_NETWORK_INFO",
+        "reason": "$string:perm_internet",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
       {
         "name": "ohos.permission.CAMERA",
         "reason": "$string:perm_camera",

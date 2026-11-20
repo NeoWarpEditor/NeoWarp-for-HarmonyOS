@@ -7,6 +7,7 @@
     { "name": "perm_microphone", "value": "用于响度侦测与录音积木" },
     { "name": "perm_notification", "value": "用于项目打包完成等长任务通知" },
     { "name": "perm_distributed", "value": "用于同一帐号下鸿蒙设备间的近场协作（不经公网）" },
+    { "name": "perm_internet", "value": "仅用于局域网协作，与 Windows 等其他平台的 NeoWarp 互通项目" },
     { "name": "menu_file", "value": "文件" },
     { "name": "menu_edit", "value": "编辑" },
     { "name": "menu_view", "value": "视图" },

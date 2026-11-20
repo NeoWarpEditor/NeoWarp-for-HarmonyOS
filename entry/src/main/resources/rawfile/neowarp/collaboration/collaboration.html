@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多人协作 · NeoWarp</title>
+<style>
+  :root {
+    --bg: #f5f5f7; --surface: #ffffff; --surface-2: #f2f2f7;
+    --text: #1d1d1f; --text-2: #6e6e73; --accent: #007aff;
+    --border: rgba(0,0,0,0.08); --green: #34c759; --red: #ff3b30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1c1c1e; --surface:#2c2c2e; --surface-2:#3a3a3c; --text:#f5f5f7;
+      --text-2:#98989d; --accent:#0a84ff; --border:rgba(255,255,255,0.1); }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--text); font-size:13px; height:100vh; display:flex; flex-direction:column; }
+  header { padding:16px 20px 12px; border-bottom:1px solid var(--border); background:var(--surface); }
+  header h1 { margin:0; font-size:16px; font-weight:600; letter-spacing:-0.3px; display:flex; align-items:center; gap:8px; }
+  header h1 .dot { width:9px; height:9px; border-radius:50%; background:var(--text-2); display:inline-block; }
+  header h1 .dot.live { background:var(--green); box-shadow:0 0 0 3px rgba(52,199,89,0.2); }
+  header .sub { color:var(--text-2); font-size:11px; margin-top:4px; }
+  .main { flex:1; overflow:auto; padding:18px 20px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:14px; }
+  .card h2 { margin:0 0 14px; font-size:14px; font-weight:600; }
+  .seg { display:flex; background:var(--surface-2); border-radius:9px; padding:3px; margin-bottom:16px; }
+  .seg button { flex:1; border:0; background:transparent; color:var(--text-2); padding:7px; border-radius:7px;
+    font-size:12px; font-weight:500; cursor:pointer; }
+  .seg button.active { background:var(--surface); color:var(--text); box-shadow:0 1px 3px rgba(0,0,0,0.12); }
+  .field { margin-bottom:12px; }
+  .field label { display:block; color:var(--text-2); font-size:11px; margin-bottom:5px; }
+  .field input { width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px;
+    background:var(--surface-2); color:var(--text); font-size:13px; outline:none; }
+  .field input:focus { border-color:var(--accent); }
+  .row { display:flex; gap:10px; }
+  .row .field { flex:1; }
+  .btn { border:0; border-radius:8px; padding:9px 16px; font-size:12px; font-weight:600; cursor:pointer; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.primary:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn.ghost { background:var(--surface-2); color:var(--text); }
+  .actions { display:flex; gap:10px; margin-top:6px; }
+  .info { background:var(--surface-2); border-radius:10px; padding:12px 14px; margin-bottom:12px; }
+  .info .k { color:var(--text-2); font-size:11px; }
+  .info .v { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:15px; font-weight:600;
+    color:var(--accent); margin:2px 0 8px; user-select:all; }
+  .members { display:flex; flex-wrap:wrap; gap:8px; }
+  .member { display:flex; align-items:center; gap:6px; background:var(--surface-2); border-radius:20px; padding:5px 11px; font-size:12px; }
+  .member .a { font-size:14px; }
+  .chat { height:180px; overflow:auto; background:var(--surface-2); border-radius:10px; padding:10px; margin-bottom:10px; }
+  .msg { margin-bottom:8px; line-height:1.4; }
+  .msg .who { color:var(--text-2); font-size:11px; margin-right:6px; }
+  .msg.self .who { color:var(--accent); }
+  .chat-input { display:flex; gap:8px; }
+  .chat-input input { flex:1; padding:8px 11px; border:1px solid var(--border); border-radius:8px;
+    background:var(--surface); color:var(--text); outline:none; font-size:13px; }
+  .status { padding:10px 20px; border-top:1px solid var(--border); background:var(--surface);
+    color:var(--text-2); font-size:11px; display:flex; justify-content:space-between; align-items:center; }
+  .status .end { color:var(--red); cursor:pointer; font-weight:600; }
+  .hidden { display:none !important; }
+  .hint { color:var(--text-2); font-size:11px; line-height:1.5; margin-top:10px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot" id="dot"></span>多人协作</h1>
+  <div class="sub" id="subtitle">与 Windows 等平台的 NeoWarp 实时协作编辑</div>
+</header>
+
+<div class="main">
+  <!-- 未连接：模式选择 -->
+  <div id="setup">
+    <div class="card">
+      <div class="seg">
+        <button id="tab-host" class="active" data-mode="host">发起协作</button>
+        <button id="tab-join" data-mode="join">加入协作</button>
+      </div>
+
+      <!-- 主机设置 -->
+      <div id="host-form">
+        <div class="field"><label>你的昵称</label><input id="h-nickname" placeholder="主机" value="主机"></div>
+        <div class="row">
+          <div class="field"><label>端口</label><input id="h-port" type="number" value="8080"></div>
+          <div class="field"><label>密码（可选，留空则无密码）</label><input id="h-password" type="text" placeholder=""></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="btn-start">创建协作房间</button></div>
+        <div class="hint">创建后，同一局域网内的伙伴在 NeoWarp 中选择「加入协作」，输入本机的 IP 与端口即可加入。需保持本窗口开启。</div>
+      </div>
+
+      <!-- 加入设置 -->
+      <div id="join-form" class="hidden">
+        <div class="row">
+          <div class="field"><label>主机 IP 地址</label><input id="j-ip" placeholder="192.168.1.10"></div>
+          <div class="field"><label>端口</label><input id="j-port" type="number" value="8080"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>你的昵称</label><input id="j-nickname" placeholder="协作者"></div>
+          <div class="field"><label>密码（如有）</label><input id="j-password" type="text" placeholder=""></div>
+        </div>
+        <div class="actions"><button class="btn primary" id="btn-join">加入房间</button></div>
+        <div class="hint">向房主询问其 IP 地址与端口。加入后将自动同步房主当前的项目。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 已连接 -->
+  <div id="connected" class="hidden">
+    <div class="card" id="host-info-card">
+      <h2>房间信息</h2>
+      <div class="info">
+        <div class="k">邀请地址（同一局域网）</div>
+        <div class="v" id="invite-addr">—</div>
+        <button class="btn ghost" id="btn-copy">复制邀请地址</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>成员 <span id="online-count" style="color:var(--text-2);font-weight:400"></span></h2>
+      <div class="members" id="members"></div>
+    </div>
+    <div class="card">
+      <h2>聊天</h2>
+      <div class="chat" id="chat"></div>
+      <div class="chat-input">
+        <input id="chat-text" placeholder="输入消息…">
+        <button class="btn primary" id="btn-send">发送</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="status">
+  <span id="status-text">未连接</span>
+  <span class="end hidden" id="btn-end">结束协作</span>
+</div>
+
+<script src="../assets/nw-core.js"></script>
+<script src="../assets/harmony-bridge.js"></script>
+<script src="../assets/collab-lan.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var mode = 'host', connected = false, ip = '';
+
+  function toast(msg) {
+    if (window.NW && NW.util && NW.util.toast) NW.util.toast(msg);
+    else { $('status-text').textContent = msg; }
+  }
+  function rpc(method, args) {
+    var nat = window.HarmonyNative;
+    if (!nat || typeof nat.invoke !== 'function') return Promise.resolve(null);
+    return Promise.resolve(nat.invoke('collab', method, JSON.stringify(args || {}))).then(function (text) {
+      var env;
+      try { env = JSON.parse(text); } catch (e) { return null; }
+      if (!env || !env.ok) return null;
+      if (!env.data) return null;
+      try { return JSON.parse(env.data); } catch (e) { return env.data; }
+    });
+  }
+
+  // 模式切换
+  function selectMode(m) {
+    mode = m;
+    $('tab-host').classList.toggle('active', m === 'host');
+    $('tab-join').classList.toggle('active', m === 'join');
+    $('host-form').classList.toggle('hidden', m !== 'host');
+    $('join-form').classList.toggle('hidden', m !== 'join');
+  }
+  $('tab-host').onclick = function () { selectMode('host'); };
+  $('tab-join').onclick = function () { selectMode('join'); };
+
+  function showConnected() {
+    connected = true;
+    $('setup').classList.add('hidden');
+    $('connected').classList.remove('hidden');
+    $('btn-end').classList.remove('hidden');
+    $('dot').classList.add('live');
+    $('status-text').textContent = mode === 'host' ? '正在主持协作房间' : '已连接到协作房间';
+    $('host-info-card').classList.toggle('hidden', mode !== 'host');
+  }
+
+  $('btn-start').onclick = function () {
+    var nick = $('h-nickname').value.trim() || '主机';
+    var port = parseInt($('h-port').value, 10) || 8080;
+    var pwd = $('h-password').value || '';
+    $('btn-start').disabled = true;
+    rpc('startHost', { password: pwd, port: port, permissions: '{}', hostName: nick, hostAvatar: '🏠' })
+      .then(function (info) {
+        $('btn-start').disabled = false;
+        if (!info || info.ok === false) { toast('创建失败：端口可能被占用'); return; }
+        rpc('getLocalIP', {}).then(function (r) {
+          ip = (r && r.ip) || '127.0.0.1';
+          $('invite-addr').textContent = ip + ':' + port + '  (房间 ' + (info.id || '') + ')';
+        }).catch(function () { $('invite-addr').textContent = '本机端口 ' + port; });
+        // 同步 collab 对象状态（供事件桥使用）
+        if (NW.collab) { NW.collab.mode = 'host'; NW.collab.nickname = nick; }
+        showConnected();
+      }).catch(function (e) { $('btn-start').disabled = false; toast('创建失败：' + (e.message || e)); });
+  };
+
+  $('btn-join').onclick = function () {
+    var host = $('j-ip').value.trim();
+    var port = parseInt($('j-port').value, 10) || 8080;
+    var nick = $('j-nickname').value.trim() || '协作者';
+    var pwd = $('j-password').value || '';
+    if (!host) { toast('请输入主机 IP'); return; }
+    $('btn-join').disabled = true;
+    rpc('join', { ip: host, port: port, password: pwd, nickname: nick, avatar: '🙂' })
+      .then(function (r) {
+        $('btn-join').disabled = false;
+        if (!r || r.joined !== true) { toast('连接失败，请检查 IP/端口/密码'); return; }
+        if (NW.collab) { NW.collab.mode = 'participant'; NW.collab.nickname = nick; }
+        showConnected();
+      }).catch(function (e) { $('btn-join').disabled = false; toast('连接失败：' + (e.message || e)); });
+  };
+
+  $('btn-copy').onclick = function () {
+    var text = $('invite-addr').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { toast('已复制'); });
+  };
+
+  $('btn-send').onclick = sendChat;
+  $('chat-text').addEventListener('keydown', function (e) { if (e.key === 'Enter') sendChat(); });
+  function sendChat() {
+    var text = $('chat-text').value.trim();
+    if (!text) return;
+    $('chat-text').value = '';
+    rpc('sendChat', { text: text });
+    appendChat('我', text, true);
+  }
+  function appendChat(who, text, self) {
+    var d = document.createElement('div');
+    d.className = 'msg' + (self ? ' self' : '');
+    var w = document.createElement('span'); w.className = 'who'; w.textContent = who + ':';
+    var t = document.createElement('span'); t.textContent = text;
+    d.appendChild(w); d.appendChild(t);
+    $('chat').appendChild(d);
+    $('chat').scrollTop = $('chat').scrollHeight;
+  }
+
+  $('btn-end').onclick = function () {
+    rpc(mode === 'host' ? 'endHost' : 'leave', {}).then(function () {
+      toast('协作已结束');
+      setTimeout(function () { try { window.close(); } catch (e) {} }, 400);
+    });
+  };
+
+  // 订阅协作事件（更新成员/聊天/状态）
+  function onEvent(name, cb) { if (NW.rpc && NW.rpc.on) NW.rpc.on('collab', name, cb); }
+  onEvent('chat', function (d) { appendChat(d.from || '成员', d.text || '', !!d.isSelf); });
+  onEvent('auth-result', function (d) {
+    if (d && d.success) { $('members').innerHTML = ''; renderMembers(d.members); }
+  });
+  onEvent('member-joined', function () { refreshMembers(); });
+  onEvent('member-left', function () { refreshMembers(); });
+  onEvent('joined', function () { refreshMembers(); });
+  onEvent('left', function (d) { toast('连接断开：' + ((d && d.reason) || '未知')); });
+  onEvent('server-message', function (m) {
+    if (m && m.type === 'auth-result' && m.success) renderMembers(m.members);
+    if (m && m.type === 'member-joined') refreshMembers();
+    if (m && m.type === 'chat') appendChat(m.from || '成员', m.text || '', !!m.isSelf);
+  });
+  function renderMembers(list) {
+    if (!list || !list.slice) return;
+    $('members').innerHTML = '';
+    list.forEach(function (m) {
+      var el = document.createElement('div'); el.className = 'member';
+      var a = document.createElement('span'); a.className = 'a'; a.textContent = m.avatar || '👤';
+      var n = document.createElement('span'); n.textContent = m.name + (m.role === 'host' ? '（房主）' : '');
+      el.appendChild(a); el.appendChild(n); $('members').appendChild(el);
+    });
+    $('online-count').textContent = '· ' + list.length + ' 人在线';
+  }
+  function refreshMembers() {
+    rpc('getMembers', {}).then(function (r) { if (r && r.members) renderMembers(r.members); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -183,17 +183,19 @@
       util.toast('SOLO 自主建站需先打开编辑器；网页版可直接与 AI 对话协作');
       return Promise.resolve(true);
     },
+    /* 多人协作：鸿蒙版复刻桌面版内置信令服务器，弹独立子窗口。
+       主页「发起协作」「加入协作」都打开同一个协作窗口，由其内部选择模式。 */
     openCollabJoin: function () {
-      util.toast('多人协作是桌面版专属能力，请使用 NeoWarp 桌面客户端');
-      return Promise.resolve(false);
+      NW.openRoute('collaboration');
+      return Promise.resolve(true);
     },
     openCollabHostNew: function () {
-      util.toast('多人协作是桌面版专属能力，请使用 NeoWarp 桌面客户端');
-      return Promise.resolve(false);
+      NW.openRoute('collaboration');
+      return Promise.resolve(true);
     },
     openCollabHostFromFile: function () {
-      util.toast('多人协作是桌面版专属能力，请使用 NeoWarp 桌面客户端');
-      return Promise.resolve(false);
+      NW.openRoute('collaboration');
+      return Promise.resolve(true);
     },
 
     /* 修正点：桌面版这里打开的是「桌面设置」窗口 */

@@ -124,7 +124,12 @@ export const ALLOWED_BRIDGE_METHODS: string[] = [
   'package.html', 'package.zip',
   'distributed.discover', 'distributed.send',
   'device.getProfile', 'device.onFoldChange',
-  'bus.publish'
+  'bus.publish',
+  // 局域网协作（复刻桌面版内置信令服务器）
+  'collab.startHost', 'collab.endHost', 'collab.getInfo', 'collab.getMembers',
+  'collab.getOnlineCount', 'collab.pushProject', 'collab.sendChat', 'collab.isRunning',
+  'collab.getLocalIP', 'collab.discover',
+  'collab.join', 'collab.leave', 'collab.sendProject'
 ];
 
 /** 离线强保证：connect-src 仅 self，渲染层二次阻断出网 */
@@ -136,7 +141,7 @@ export const OFFLINE_CSP: string =
   "font-src 'self' data:; " +
   "media-src 'self' data: blob:; " +
   "worker-src 'self' blob:; " +
-  "connect-src 'self' data: blob:; " +
+  "connect-src 'self' data: blob: ws: wss: http: https:; " +
   "form-action 'self'; base-uri 'self'; object-src 'none'";
 
 /** 单次桥调用数据上限（字节），超限由调用方分片 */

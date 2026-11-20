@@ -14,6 +14,7 @@ import { common } from '@kit.AbilityKit';
 import { fileIo as fs, picker } from '@kit.CoreFileKit';
 import { preferences } from '@kit.ArkData';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
+import { connection } from '@kit.NetworkKit';
 import { util } from '@kit.ArkTS';
 import {
   DeviceSnapshot, BridgeEnvelope, PerfPolicy, SpriteStat, RecentProject,
@@ -23,6 +24,8 @@ import {
 } from '../common/Constants';
 import { PerformanceManager } from '../common/PerformanceManager';
 import { WindowBus } from '../common/WindowBus';
+import { CollabServer, CollabStartOptions, CollabCallbacks } from '../collab/CollabServer';
+import { CollabClient, CollabJoinOptions, CollabClientCallbacks } from '../collab/CollabClient';
 
 const PREF_STORE: string = 'neowarp_native';
 const PREF_RECENT: string = 'recent_projects';
@@ -46,6 +49,11 @@ interface SpriteStatsArgs { sprites: SpriteStat[]; }
 interface PermissionArgs { name: string; }
 interface BusPublishArgs { data: string; }
 interface OpenExternalArgs { url: string; }
+interface CollabHostArgs { password: string; port: number; permissions: string; hostName: string; hostAvatar: string; }
+interface CollabJoinArgs { ip: string; port: number; password: string; nickname: string; avatar: string; }
+interface CollabPushArgs { project: string; target: string; }
+interface CollabChatArgs { text: string; }
+interface CollabDiscoverArgs { port: number; }
 
 /** 由 UI 层实现的窗口/设备宿主能力，避免服务层反向依赖 ArkUI 组件 */
 export interface WindowHost {
@@ -66,6 +74,9 @@ export class NativeServices {
   private perf: PerformanceManager;
   private host: WindowHost | null = null;
   private sandbox: string = '';
+  private collabServer: CollabServer | null = null;
+  private collabClient: CollabClient | null = null;
+  private collabIsHost: boolean = false;
 
   constructor(context: common.UIAbilityContext, perf: PerformanceManager) {
     this.context = context;
@@ -110,6 +121,19 @@ export class NativeServices {
       case 'window.fullscreen': return this.windowFullscreen(this.parse<FullscreenArgs>(argsJson));
       case 'window.has': return this.windowHas(this.parse<WindowKeyArgs>(argsJson));
       case 'bus.publish': return this.busPublish(this.parse<BusPublishArgs>(argsJson));
+      case 'collab.startHost': return await this.collabStartHost(this.parse<CollabHostArgs>(argsJson));
+      case 'collab.endHost': return this.collabEnd();
+      case 'collab.getInfo': return this.collabGetInfo();
+      case 'collab.getMembers': return this.collabGetMembers();
+      case 'collab.getOnlineCount': return this.collabGetOnlineCount();
+      case 'collab.pushProject': return this.collabPushProject(this.parse<CollabPushArgs>(argsJson));
+      case 'collab.sendChat': return this.collabSendChat(this.parse<CollabChatArgs>(argsJson));
+      case 'collab.isRunning': return this.collabIsRunning();
+      case 'collab.join': return await this.collabJoin(this.parse<CollabJoinArgs>(argsJson));
+      case 'collab.leave': return this.collabLeave();
+      case 'collab.sendProject': return this.collabSendProject(this.parse<CollabPushArgs>(argsJson));
+      case 'collab.getLocalIP': return await this.collabGetLocalIP();
+      case 'collab.discover': return await this.collabDiscover(this.parse<CollabDiscoverArgs>(argsJson));
       case 'system.openExternal': return await this.openExternal(this.parse<OpenExternalArgs>(argsJson));
       case 'media.enumerateDevices': return this.enumerateMediaDevices();
       case 'media.requestPermission': return await this.requestMediaPermission(this.parse<PermissionArgs>(argsJson));
@@ -361,6 +385,197 @@ export class NativeServices {
       '}';
     WindowBus.get().broadcast(script);
     return okEnvelope('{"published":true}');
+  }
+
+  /* ===================== 局域网协作（复刻桌面版信令协议） ===================== */
+
+  /** 把协作事件广播到所有 ArkWeb 窗口，Web 侧 NW.rpc.emit('collab', ...) 接收 */
+  private emitCollab(event: string, data: Object): void {
+    const script: string =
+      'if (window.NW && window.NW.rpc && window.NW.rpc.emit) {' +
+      'window.NW.rpc.emit("collab",' + JSON.stringify(event) + ',' + JSON.stringify(data) + ');' +
+      '}';
+    WindowBus.get().broadcast(script);
+  }
+
+  private collabCallbacks(): CollabCallbacks {
+    const self = this;
+    const cb: CollabCallbacks = {
+      onClientJoin: (username: string, avatar: string): void => {
+        const d: Record<string, Object> = { 'username': username, 'avatar': avatar };
+        self.emitCollab('member-joined', d);
+      },
+      onClientLeave: (username: string): void => {
+        const d: Record<string, Object> = { 'username': username };
+        self.emitCollab('member-left', d);
+      },
+      onChatMessage: (msg: string): void => {
+        self.emitCollab('chat', JSON.parse(msg) as Record<string, Object>);
+      },
+      onProjectRequest: (username: string): void => {
+        const d: Record<string, Object> = { 'username': username };
+        self.emitCollab('project-request', d);
+      },
+      onProjectUpdate: (msg: string): void => {
+        self.emitCollab('project-update', JSON.parse(msg) as Record<string, Object>);
+      }
+    };
+    return cb;
+  }
+
+  private async collabStartHost(args: CollabHostArgs): Promise<BridgeEnvelope> {
+    this.collabEndInternal();
+    const opts: CollabStartOptions = {
+      password: args.password || '',
+      port: args.port > 0 ? args.port : 8080,
+      permissions: args.permissions || '{}',
+      hostName: args.hostName || '主机',
+      hostAvatar: args.hostAvatar || '🏠'
+    };
+    const srv = new CollabServer();
+    const ok: boolean = await srv.start(opts, this.collabCallbacks());
+    if (!ok) return errEnvelope(BRIDGE_ERR_IO, '端口被占用或无法监听');
+    this.collabServer = srv;
+    this.collabIsHost = true;
+    return okEnvelope(JSON.stringify(srv.getInfo()));
+  }
+
+  private collabEnd(): BridgeEnvelope {
+    this.collabEndInternal();
+    return okEnvelope('{"ended":true}');
+  }
+
+  private collabEndInternal(): void {
+    if (this.collabServer !== null) {
+      this.collabServer.end();
+      this.collabServer = null;
+    }
+    if (this.collabClient !== null) {
+      this.collabClient.leave();
+      this.collabClient = null;
+    }
+    this.collabIsHost = false;
+  }
+
+  private collabGetInfo(): BridgeEnvelope {
+    if (this.collabServer !== null) return okEnvelope(JSON.stringify(this.collabServer.getInfo()));
+    return okEnvelope('{"ok":false}');
+  }
+
+  private collabGetMembers(): BridgeEnvelope {
+    if (this.collabServer !== null) return okEnvelope(JSON.stringify({ members: this.collabServer.getMembers() }));
+    return okEnvelope('{"members":[]}');
+  }
+
+  private collabGetOnlineCount(): BridgeEnvelope {
+    const n: number = this.collabServer !== null ? this.collabServer.getOnlineCountTotal()
+      : (this.collabClient !== null && this.collabClient.isConnected() ? 2 : 0);
+    return okEnvelope(JSON.stringify({ onlineCount: n }));
+  }
+
+  private collabPushProject(args: CollabPushArgs): BridgeEnvelope {
+    if (this.collabServer === null) return errEnvelope(BRIDGE_ERR_IO, 'not hosting');
+    this.collabServer.broadcastProject(args.project, args.target || '');
+    return okEnvelope('{"pushed":true}');
+  }
+
+  private collabSendChat(args: CollabChatArgs): BridgeEnvelope {
+    if (this.collabServer !== null) {
+      this.collabServer.broadcastChatFromHost(args.text);
+      return okEnvelope('{"sent":true}');
+    }
+    if (this.collabClient !== null && this.collabClient.isConnected()) {
+      this.collabClient.sendChat(args.text);
+      return okEnvelope('{"sent":true}');
+    }
+    return errEnvelope(BRIDGE_ERR_IO, 'no active collaboration');
+  }
+
+  private collabIsRunning(): BridgeEnvelope {
+    const running: boolean = (this.collabServer !== null && this.collabServer.isRunning()) ||
+      (this.collabClient !== null && this.collabClient.isConnected());
+    return okEnvelope(running ? '{"running":true}' : '{"running":false}');
+  }
+
+  private clientCallbacks(): CollabClientCallbacks {
+    const self = this;
+    const cb: CollabClientCallbacks = {
+      onConnected: (msg: string): void => {
+        const d: Record<string, Object> = {};
+        self.emitCollab('joined', d);
+      },
+      onMessage: (msg: string): void => {
+        // 把服务器消息原样推给 Web，由 collab bridge 按 type 分派
+        self.emitCollab('server-message', JSON.parse(msg) as Record<string, Object>);
+      },
+      onDisconnected: (reason: string): void => {
+        const d: Record<string, Object> = { 'reason': reason };
+        self.emitCollab('left', d);
+      }
+    };
+    return cb;
+  }
+
+  private async collabJoin(args: CollabJoinArgs): Promise<BridgeEnvelope> {
+    this.collabEndInternal();
+    const opts: CollabJoinOptions = {
+      ip: args.ip,
+      port: args.port > 0 ? args.port : 8080,
+      password: args.password || '',
+      nickname: args.nickname || '协作者',
+      avatar: args.avatar || '🙂'
+    };
+    const client = new CollabClient();
+    const ok: boolean = await client.join(opts, this.clientCallbacks());
+    if (!ok) return errEnvelope(BRIDGE_ERR_IO, '无法连接主机');
+    this.collabClient = client;
+    this.collabIsHost = false;
+    return okEnvelope('{"joined":true}');
+  }
+
+  private collabLeave(): BridgeEnvelope {
+    if (this.collabClient !== null) {
+      this.collabClient.leave();
+      this.collabClient = null;
+    }
+    return okEnvelope('{"left":true}');
+  }
+
+  private collabSendProject(args: CollabPushArgs): BridgeEnvelope {
+    if (this.collabClient === null || !this.collabClient.isConnected()) {
+      return errEnvelope(BRIDGE_ERR_IO, 'not joined');
+    }
+    this.collabClient.sendProject(args.project);
+    return okEnvelope('{"sent":true}');
+  }
+
+  /** 获取本机局域网 IP（用于主机显示邀请地址） */
+  private async collabGetLocalIP(): Promise<BridgeEnvelope> {
+    try {
+      const net: connection.NetHandle = await connection.getDefaultNet();
+      const props: connection.ConnectionProperties = await connection.getConnectionProperties(net);
+      let ip: string = '';
+      for (const link of props.linkAddresses) {
+        const raw: string = link.address.address;
+        // 取 IPv4 且非回环
+        if (raw.length > 0 && raw.indexOf(':') < 0 && raw !== '127.0.0.1') {
+          ip = raw;
+          break;
+        }
+      }
+      const result: Record<string, Object> = { 'ip': ip.length > 0 ? ip : '127.0.0.1' };
+      return okEnvelope(JSON.stringify(result));
+    } catch (_e) {
+      return okEnvelope('{"ip":"127.0.0.1"}');
+    }
+  }
+
+  /** 局域网发现：TCP 探测指定 IP 段的 /discover（简化：Web 侧提供候选 IP 列表） */
+  private async collabDiscover(args: CollabDiscoverArgs): Promise<BridgeEnvelope> {
+    // 真机局域网扫描受权限与性能限制，这里返回本机信息；
+    // 跨设备协作以手动输入主机 IP 为主（与桌面版手动加入一致）。
+    const info = this.collabServer !== null ? this.collabServer.getInfo() : null;
+    return okEnvelope(JSON.stringify({ rooms: info ? [info] : [] }));
   }
 
   private enumerateMediaDevices(): BridgeEnvelope {

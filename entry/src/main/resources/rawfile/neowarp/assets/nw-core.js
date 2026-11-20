@@ -1261,7 +1261,8 @@
     'contact': { url: 'contact/contact.html', title: '联系我们', newTab: true },
     'packager': { url: 'gui/migrate-helper.html', title: '打包器', newTab: true },
     'detached-stage': { url: 'detached-stage/index.html', title: '分离舞台', newTab: true },
-    'addons': { url: 'addons/addons.html', title: '附加组件设置', newTab: true }
+    'addons': { url: 'addons/addons.html', title: '附加组件设置', newTab: true },
+    'collaboration': { url: 'collaboration/collaboration.html', title: '多人协作', newTab: true, width: 560, height: 720 }
   };
 
   function openRoute (key, options) {
