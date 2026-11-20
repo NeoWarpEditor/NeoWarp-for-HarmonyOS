@@ -1278,16 +1278,17 @@
       merged.height = Math.min(merged.height, global.innerHeight - 32);
     }
 
-    /* 独立标签页模式：与桌面版「再开一个应用窗口」最接近。
-       刻意保留 opener —— 跨标签页 RPC 优先走它，广播只作兜底。 */
+    /* 独立窗口模式：与桌面版「再开一个 BrowserWindow」等价。
+       鸿蒙离线版由 harmony-bridge.js 覆盖本函数为「真实 OS 子窗口」。
+       这里作为兜底：绝不退回 location.href 整页跳转（会把主页变成子页面），
+       而是优先用 NWWindow 开独立窗口；再不行才尝试 window.open，且失败即止。 */
     if (merged.newTab) {
-      var tab = global.open(util.resolveAppPath(route.url), '_blank');
-      if (!tab) {
-        // 弹窗被拦截时退回当前页跳转，至少保证功能可达
-        global.location.href = util.resolveAppPath(route.url);
-        return null;
+      if (global.NWWindow && typeof global.NWWindow.open === 'function') {
+        return global.NWWindow.open(Object.assign({ key: key, title: merged.title || route.title }, merged, { url: route.url }));
       }
-      return { key: key, newTab: true, tab: tab };
+      var tab = global.open(util.resolveAppPath(route.url), '_blank');
+      // 弹窗不可用就静默失败，绝不覆盖当前页
+      return tab ? { key: key, newTab: true, tab: tab } : null;
     }
 
     if (global.NWWindow) {

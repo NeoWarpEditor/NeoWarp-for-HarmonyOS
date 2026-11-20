@@ -19,22 +19,24 @@
   var NW = global.NW || (global.NW = {});
   var host = global.NWHost || NW.host;
   var rpc = NW.rpc;
-  var native = global.HarmonyNative;
-
+  // native 对象在 invoke 中动态获取（见 getNative），此处不缓存，
+  // 避免 javaScriptProxy 注入晚于脚本执行导致窗口覆盖未安装。
   var cachedTaskStats = { system: null, sprites: [] };
   var currentProfile = null;
   var OFFLINE_MESSAGE = '[NeoWarp HarmonyOS] 离线模式：网络请求已被阻止';
 
-  if (!native || typeof native.invoke !== 'function') {
-    // 非鸿蒙环境（普通浏览器预览）下保持网页版原有行为，不破坏功能
-    global.NWHarmony = { available: false, invoke: function () { return Promise.reject(new Error('HarmonyNative unavailable')); } };
-    return;
+  /* javaScriptProxy 注入存在时序差：脚本执行时 HarmonyNative 可能尚未挂到 window。
+     旧实现此刻直接 return，导致 global.open / NW.openRoute 的「真实子窗口」覆盖
+     未安装，openRoute 退回 location.href 整页跳转（主页点 SOLO 变成当前页）。
+     这里改为动态获取 + 延迟重试，保证窗口覆盖永远先装上。 */
+  function getNative () {
+    return global.HarmonyNative && typeof global.HarmonyNative.invoke === 'function'
+      ? global.HarmonyNative : null;
   }
 
   /* ------------------------------- 调用封装 ------------------------------- */
-  function invoke (ns, method, args) {
-    var payload = JSON.stringify(args || {});
-    return Promise.resolve(native.invoke(ns, method, payload)).then(function (text) {
+  function invokeRaw (nat, ns, method, payload) {
+    return Promise.resolve(nat.invoke(ns, method, payload)).then(function (text) {
       var envelope;
       try { envelope = JSON.parse(text); } catch (e) { throw new Error('桥返回非法 JSON: ' + text); }
       if (!envelope || !envelope.ok) {
@@ -42,6 +44,26 @@
       }
       if (!envelope.data) return null;
       try { return JSON.parse(envelope.data); } catch (e) { return envelope.data; }
+    });
+  }
+
+  /* 等待 native 就绪再真正调用：最多约 2 秒（100 × 20ms）。
+     窗口打开等 UI 操作因此不会因注入时序丢失。 */
+  function invoke (ns, method, args) {
+    var payload = JSON.stringify(args || {});
+    return new Promise(function (resolve, reject) {
+      var tries = 0;
+      function attempt () {
+        var nat = getNative();
+        if (nat) {
+          invokeRaw(nat, ns, method, payload).then(resolve, reject);
+        } else if (++tries > 100) {
+          reject(new Error('HarmonyNative unavailable: ' + ns + '.' + method));
+        } else {
+          setTimeout(attempt, 20);
+        }
+      }
+      attempt();
     });
   }
 
@@ -448,6 +470,40 @@
     });
     return {};
   };
+
+  /* -------- 主页/编辑器所有功能入口统一走「独立 OS 子窗口」--------
+     不经过 nw-core.js 的 openRoute：它先试 window.open，失败就退回
+     location.href 整页跳转（这正是「点 SOLO 当前页变成 SOLO」的根因）。
+     Windows 版每个功能都是独立 BrowserWindow，这里等价实现：无论任何
+     情况都弹真实子窗口，绝不改变当前页。home.js 调用 NW.openRoute，
+     故覆盖本方法即可拦截主页 SOLO / 编辑器 / 扩展 / 图片 / 设置等全部入口。 */
+  function openRouteAsWindow (key, options) {
+    var route = ROUTES[key];
+    if (!route) return null;
+    var merged = Object.assign({}, route, options || {});
+    var rel = toRelativeUrl(merged.url || route.url);
+    var keyForWin = key || routeKeyForUrl(rel) || ('nw-route-' + (++winSeq));
+    var handle = nativeWindowApi.open({
+      key: keyForWin,
+      title: merged.title || defaultTitle(key),
+      url: rel,
+      width: merged.width || 980,
+      height: merged.height || 700
+    });
+    return { key: keyForWin, newTab: true, tab: {}, window: handle };
+  }
+  NW.openRoute = openRouteAsWindow;
+  global.NWOpenRoute = openRouteAsWindow;
+  if (NW.host) {
+    NW.host.register('desktop', {
+      openWindow: function (k, o) { return !!openRouteAsWindow(k, o); },
+      openDesktopSettings: function () { return !!openRouteAsWindow('desktop-settings'); },
+      openExtensionEditor: function () { return !!openRouteAsWindow('extension-editor'); },
+      openImageEditor: function () { return !!openRouteAsWindow('image-editor'); },
+      openAI: function () { return !!openRouteAsWindow('ai-assistant'); },
+      openEditor: function () { return !!openRouteAsWindow('editor'); }
+    });
+  }
 
   /** 子窗口页面从 fragment 里取自己的 key，便于 window.close() 精确关闭 */
   function currentWindowKey () {

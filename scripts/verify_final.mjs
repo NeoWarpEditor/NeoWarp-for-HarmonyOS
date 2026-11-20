@@ -95,6 +95,19 @@ add('页内 iframe 浮层已移除', bridgeSrc.includes('global.NWWindow = nativ
   bridgeSrc.includes('global.open = function') && !bridgeSrc.includes('openFallback'),
   '窗口打开统一走原生子窗口');
 
+// 功能入口一律弹独立 OS 子窗口（SOLO/编辑器等，不再整页跳转）
+const coreSrc = fs.readFileSync(`${PROJ}/entry/src/main/resources/rawfile/neowarp/assets/nw-core.js`, 'utf8');
+add('openRoute 无整页跳转降级', !coreSrc.includes('global.location.href = util.resolveAppPath(route.url)'),
+  '点功能入口绝不把当前页变成子页面');
+add('openRoute 优先 NWWindow 独立窗口', coreSrc.includes("global.NWWindow.open(Object.assign({ key: key"),
+  '兜底路径也走真实子窗口');
+add('NW.openRoute 被桥接为原生子窗口', bridgeSrc.includes('function openRouteAsWindow') &&
+  bridgeSrc.includes('NW.openRoute = openRouteAsWindow') && bridgeSrc.includes('global.NWOpenRoute = openRouteAsWindow'),
+  '主页/编辑器所有入口统一弹 OS 子窗口');
+add('native 注入延迟不丢窗口覆盖', bridgeSrc.includes('function getNative ()') &&
+  bridgeSrc.includes('function invokeRaw') && !/if \(!native \|\|/.test(bridgeSrc),
+  'javaScriptProxy 晚到也不提前 return');
+
 // Issue 修复回归检查（GitHub issue #1 的 19 项）
 const bridgeArkSrc = fs.readFileSync(`${etsDir}/bridge/HarmonyBridge.ets`, 'utf8');
 add('二进制资源不再被 UTF-8 破坏（issue 1/8/10/11/16/18）',
